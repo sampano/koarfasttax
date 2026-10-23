@@ -83,7 +83,8 @@ namespace JwtAuth.Services
                 await _notificationService.CreateNotificationAsync(
                     taxCase.Client.PortalUserId.Value,
                     "New document requested",
-                    $"{documentType.Name} was requested for your {taxCase.TaxYear} tax case."
+                    $"{documentType.Name} was requested for your {taxCase.TaxYear} tax case.",
+                    $"/client/tax-cases/{taxCase.Id}"
                 );
             }
 

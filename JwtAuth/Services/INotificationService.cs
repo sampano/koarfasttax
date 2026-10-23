@@ -4,10 +4,11 @@ namespace JwtAuth.Services
 {
     public interface INotificationService
     {
-        Task<Notification> CreateNotificationAsync(Guid userId, string title, string message);
+        Task<Notification> CreateNotificationAsync(Guid userId, string title, string message, string? link = null);
 
         Task<List<Notification>> GetNotificationsAsync(Guid userId);
 
         Task<bool> MarkAsReadAsync(int notificationId, Guid userId);
+
     }
 }

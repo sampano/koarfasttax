@@ -180,7 +180,8 @@ namespace JwtAuth.Services
                     await _notificationService.CreateNotificationAsync(
                         taxCase.Client.PortalUserId.Value,
                         "Tax case status updated",
-                        $"Your {taxCase.TaxYear} tax case is now {formattedStatus}."
+                        $"Your {taxCase.TaxYear} tax case is now {formattedStatus}.",
+                        $"/client/tax-cases/{taxCase.Id}"
                     );
                 }
 

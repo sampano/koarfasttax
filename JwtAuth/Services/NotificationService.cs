@@ -13,13 +13,15 @@ namespace JwtAuth.Services
             _context = context;
         }
 
-        public async Task<Notification> CreateNotificationAsync(Guid userId, string title, string message)
+        public async Task<Notification> CreateNotificationAsync(Guid userId, string title, string message, string? link = null)
+
         {
             Notification notification = new Notification
             {
                 UserId = userId,
                 Title = title,
-                Message = message
+                Message = message,
+                Link = link
             };
 
             _context.Notifications.Add(notification);

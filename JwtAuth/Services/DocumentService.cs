@@ -393,6 +393,16 @@ namespace JwtAuth.Services
                 await _emailService.SendAllDocumentsCompletedAsync(
                     taxCase.Client.Email,
                     taxCase.TaxYear);
+
+                if (taxCase.Client.PortalUserId is not null)
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        taxCase.Client.PortalUserId.Value,
+                        "All documents received",
+                        $"All requested documents for your {taxCase.TaxYear} tax case have been received.",
+                        $"/client/tax-cases/{taxCase.Id}"
+                    );
+                }
             }
 
 
@@ -410,8 +420,9 @@ namespace JwtAuth.Services
                 await _notificationService.CreateNotificationAsync(
                     taxCase.Client.UserId,
                     "New document uploaded",
-                    $"{clientName} uploaded {documentType.Name} for tax year {taxCase.TaxYear}."
-                );
+                    $"{clientName} uploaded {documentType.Name} for tax year {taxCase.TaxYear}.",
+                    $"/tax-cases/{taxCase.Id}"
+                    );
 
                 await _emailService.SendDocumentUploadedAsync(
                     taxCase.Client.Email,
