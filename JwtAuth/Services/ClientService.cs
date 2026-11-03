@@ -12,11 +12,17 @@ namespace JwtAuth.Services
     {
         private readonly AppDbContext _context;
         private readonly IEmailService _emailService;
+        private readonly IGoHighLevelService _goHighLevelService;
 
-        public ClientService(AppDbContext context, IEmailService emailService)
+        public ClientService(
+            AppDbContext context,
+            IEmailService emailService,
+            IGoHighLevelService goHighLevelService
+        )
         {
             _context = context;
             _emailService = emailService;
+            _goHighLevelService = goHighLevelService;
         }
 
         // Get all clients
@@ -51,7 +57,10 @@ namespace JwtAuth.Services
                     Phone = client.Phone,
                     CreatedAt = client.CreatedAt,
                     UserId = client.UserId,
-                    PortalUserId = client.PortalUserId
+                    PortalUserId = client.PortalUserId,
+                    GoHighLevelContactId = client.GoHighLevelContactId,
+                    NotificationsEnabled = client.NotificationsEnabled
+
                 })
                 .ToListAsync();
 
@@ -90,7 +99,9 @@ namespace JwtAuth.Services
                 Phone = client.Phone,
                 CreatedAt = client.CreatedAt,
                 UserId = client.UserId,
-                PortalUserId = client.PortalUserId
+                PortalUserId = client.PortalUserId,
+                GoHighLevelContactId = client.GoHighLevelContactId,
+                NotificationsEnabled = client.NotificationsEnabled
 
             };
         }
@@ -133,7 +144,9 @@ namespace JwtAuth.Services
                 Phone = client.Phone,
                 CreatedAt = client.CreatedAt,
                 UserId = client.UserId,
-                PortalUserId = client.PortalUserId
+                PortalUserId = client.PortalUserId,
+                GoHighLevelContactId = client.GoHighLevelContactId,
+                NotificationsEnabled = client.NotificationsEnabled
 
             };
         }
@@ -183,7 +196,9 @@ namespace JwtAuth.Services
                 Phone = client.Phone,
                 CreatedAt = client.CreatedAt,
                 UserId = client.UserId,
-                PortalUserId = client.PortalUserId
+                PortalUserId = client.PortalUserId,
+                GoHighLevelContactId = client.GoHighLevelContactId,
+                NotificationsEnabled = client.NotificationsEnabled
             };
         }
 
@@ -268,7 +283,9 @@ namespace JwtAuth.Services
                 Phone = client.Phone,
                 CreatedAt = client.CreatedAt,
                 UserId = client.UserId,
-                PortalUserId = client.PortalUserId
+                PortalUserId = client.PortalUserId,
+                GoHighLevelContactId = client.GoHighLevelContactId,
+                NotificationsEnabled = client.NotificationsEnabled
             };
         }
 
@@ -494,6 +511,198 @@ namespace JwtAuth.Services
             password);
 
             return true;
+        }
+
+        public async Task<ClientDto> ImportGoHighLevelContactAsync(
+    string ghlContactId,
+    Guid adminUserId
+)
+        {
+            GoHighLevelContactDto? ghlContact =
+                await _goHighLevelService.GetContactAsync(ghlContactId);
+
+            if (ghlContact is null)
+            {
+                throw new InvalidOperationException(
+                    "GoHighLevel contact was not found."
+                );
+            }
+
+            bool ghlContactAlreadyImported =
+                await _context.Clients.AnyAsync(client =>
+                    client.UserId == adminUserId &&
+                    client.GoHighLevelContactId == ghlContactId);
+
+            if (ghlContactAlreadyImported)
+            {
+                throw new InvalidOperationException(
+                    "This GoHighLevel contact has already been imported."
+                );
+            }
+
+            string? email = ghlContact.Email?
+                .Trim()
+                .ToLower();
+
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                bool emailExists =
+                    await _context.Clients.AnyAsync(client =>
+                        client.UserId == adminUserId &&
+                        client.Email == email);
+
+                if (emailExists)
+                {
+                    throw new InvalidOperationException(
+                        "A ClientFlow client with this email already exists."
+                    );
+                }
+            }
+
+            Client client = new Client
+            {
+                FirstName = ghlContact.FirstName,
+                LastName = ghlContact.LastName,
+                Email = email ?? string.Empty,
+                Phone = ghlContact.Phone,
+                UserId = adminUserId,
+                GoHighLevelContactId = ghlContact.Id
+            };
+
+            _context.Clients.Add(client);
+
+            await _context.SaveChangesAsync();
+
+            return new ClientDto
+            {
+                Id = client.Id,
+                FirstName = client.FirstName,
+                LastName = client.LastName,
+                Email = client.Email,
+                Phone = client.Phone,
+                CreatedAt = client.CreatedAt,
+                UserId = client.UserId,
+                PortalUserId = client.PortalUserId,
+                GoHighLevelContactId = client.GoHighLevelContactId,
+                NotificationsEnabled = client.NotificationsEnabled,
+            };
+        }
+
+        public async Task<ClientDto?> SyncClientToGoHighLevelAsync(
+    int clientId,
+    Guid adminUserId
+)
+        {
+            Client? client = await _context.Clients
+                .FirstOrDefaultAsync(client =>
+                    client.Id == clientId &&
+                    client.UserId == adminUserId);
+
+            if (client is null)
+            {
+                return null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(client.GoHighLevelContactId))
+            {
+                throw new InvalidOperationException(
+                    "This client is already linked to GoHighLevel."
+                );
+            }
+
+            if (string.IsNullOrWhiteSpace(client.Email))
+            {
+                throw new InvalidOperationException(
+                    "The client must have an email address before syncing to GoHighLevel."
+                );
+            }
+
+            string? ghlContactId =
+                await _goHighLevelService.UpsertContactAsync(
+                    client.FirstName,
+                    client.LastName,
+                    client.Email,
+                    client.Phone
+                );
+
+            if (string.IsNullOrWhiteSpace(ghlContactId))
+            {
+                throw new InvalidOperationException(
+                    "GoHighLevel did not return a contact ID."
+                );
+            }
+
+            client.GoHighLevelContactId = ghlContactId;
+
+            await _context.SaveChangesAsync();
+
+            return new ClientDto
+            {
+                Id = client.Id,
+                FirstName = client.FirstName,
+                LastName = client.LastName,
+                Email = client.Email,
+                Phone = client.Phone,
+                CreatedAt = client.CreatedAt,
+                UserId = client.UserId,
+                PortalUserId = client.PortalUserId,
+                GoHighLevelContactId = client.GoHighLevelContactId,
+                NotificationsEnabled = client.NotificationsEnabled,
+            };
+        }
+
+        public async Task<HashSet<string>> GetImportedGoHighLevelContactIdsAsync(Guid adminUserId)
+        {
+            var contactIds = await _context.Clients
+                .Where(client =>
+                    client.UserId == adminUserId &&
+                    client.GoHighLevelContactId != null)
+                .Select(client => client.GoHighLevelContactId!)
+                .ToListAsync();
+
+            return contactIds.ToHashSet();
+        }
+
+        public async Task<ClientDto?> UpdateNotificationsEnabledAsync(
+    int clientId,
+    bool enabled,
+    Guid adminUserId)
+        {
+            Client? client = await _context.Clients
+                .FirstOrDefaultAsync(client =>
+                    client.Id == clientId &&
+                    client.UserId == adminUserId);
+
+            if (client is null)
+            {
+                return null;
+            }
+
+            if (enabled &&
+                string.IsNullOrWhiteSpace(client.GoHighLevelContactId))
+            {
+                throw new InvalidOperationException(
+                    "Link this client to GoHighLevel before enabling notifications."
+                );
+            }
+
+            client.NotificationsEnabled = enabled;
+
+            await _context.SaveChangesAsync();
+
+            return new ClientDto
+            {
+                Id = client.Id,
+                FirstName = client.FirstName,
+                LastName = client.LastName,
+                Email = client.Email,
+                Phone = client.Phone,
+                CreatedAt = client.CreatedAt,
+                UserId = client.UserId,
+                PortalUserId = client.PortalUserId,
+                GoHighLevelContactId = client.GoHighLevelContactId,
+                NotificationsEnabled = client.NotificationsEnabled
+            };
         }
     }
 }

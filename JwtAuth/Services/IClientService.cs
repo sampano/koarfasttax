@@ -31,5 +31,12 @@ namespace JwtAuth.Services
 
         Task<bool> ResetPortalPasswordAsync(int clientId, string password,Guid adminUserId);
 
+        Task<ClientDto> ImportGoHighLevelContactAsync(string ghlContactId,Guid adminUserId);
+
+        Task<ClientDto?> SyncClientToGoHighLevelAsync(int clientId, Guid adminUserId);
+
+        Task<HashSet<string>> GetImportedGoHighLevelContactIdsAsync(Guid adminUserId);
+
+        Task<ClientDto?> UpdateNotificationsEnabledAsync(int clientId, bool enabled, Guid adminUserId);
     }
 }

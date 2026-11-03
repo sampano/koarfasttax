@@ -20,5 +20,9 @@ namespace JwtAuth.Dtos.Clients
 
         public Guid? PortalUserId { get; set; }
 
+        public string? GoHighLevelContactId { get; set; }
+
+        public bool NotificationsEnabled { get; set; }
+
     }
 }

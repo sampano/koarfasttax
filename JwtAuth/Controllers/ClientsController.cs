@@ -13,10 +13,12 @@ namespace JwtAuth.Controllers
     public class ClientsController : ControllerBase
     {
         private readonly IClientService _clientService;
+        private readonly IGoHighLevelService _goHighLevelService;
 
-        public ClientsController(IClientService clientService)
+        public ClientsController(IClientService clientService, IGoHighLevelService goHighLevelService)
         {
             _clientService = clientService;
+            _goHighLevelService = goHighLevelService;
         }
     
         private Guid GetCurrentUserId()
@@ -226,6 +228,135 @@ namespace JwtAuth.Controllers
                 }
 
                 return NoContent();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+        }
+
+        [HttpPost("import-ghl/{ghlContactId}")]
+        public async Task<ActionResult<ClientDto>> ImportGoHighLevelContact(
+    string ghlContactId
+)
+        {
+            Guid adminUserId = GetCurrentUserId();
+
+            try
+            {
+                ClientDto client =
+                    await _clientService.ImportGoHighLevelContactAsync(
+                        ghlContactId,
+                        adminUserId
+                    );
+
+                return CreatedAtAction(
+                    nameof(GetClient),
+                    new { id = client.Id },
+                    client
+                );
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+        }
+
+        [HttpPost("{clientId}/sync-ghl")]
+        public async Task<ActionResult<ClientDto>> SyncClientToGoHighLevel(
+    int clientId
+)
+        {
+            Guid adminUserId = GetCurrentUserId();
+
+            try
+            {
+                ClientDto? client =
+                    await _clientService.SyncClientToGoHighLevelAsync(
+                        clientId,
+                        adminUserId
+                    );
+
+                if (client is null)
+                {
+                    return NotFound("Client not found.");
+                }
+
+                return Ok(client);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+        }
+
+
+        [HttpGet("ghl-contacts")]
+        public async Task<IActionResult> GetGoHighLevelContacts(
+    [FromQuery] string keyword
+)
+        {
+            if (string.IsNullOrWhiteSpace(keyword))
+            {
+                return Ok(new List<GoHighLevelContactDto>());
+            }
+
+            Guid adminUserId = GetCurrentUserId();
+
+            var contacts =
+                await _goHighLevelService.SearchContactsAsync(
+                    keyword
+                );
+
+            var importedContactIds =
+                await _clientService
+                    .GetImportedGoHighLevelContactIdsAsync(
+                        adminUserId
+                    );
+
+            foreach (var contact in contacts)
+            {
+                contact.IsImported =
+                    importedContactIds.Contains(contact.Id);
+            }
+
+            return Ok(contacts);
+        }
+
+        [HttpPut("{clientId}/notifications")]
+        public async Task<ActionResult<ClientDto>> UpdateNotifications(
+    int clientId,
+    UpdateClientNotificationsDto request)
+        {
+            Guid adminUserId = GetCurrentUserId();
+
+            try
+            {
+                ClientDto? client =
+                    await _clientService.UpdateNotificationsEnabledAsync(
+                        clientId,
+                        request.Enabled,
+                        adminUserId
+                    );
+
+                if (client is null)
+                {
+                    return NotFound(new
+                    {
+                        message = "Client not found."
+                    });
+                }
+
+                return Ok(client);
             }
             catch (InvalidOperationException ex)
             {

@@ -10,6 +10,14 @@
 
         public string Role { get; set; } = string.Empty;  // e.g. "Admin" or "Client"
 
+        public string FirstName { get; set; } = string.Empty;
+
+        public string LastName { get; set; } = string.Empty;
+
+        public string? Phone { get; set; }
+
+        public string? ProfileImageUrl { get; set; }
+
         public string? RefreshToken { get; set; }
 
         public DateTime? RefreshTokenExpiryTime { get; set; }

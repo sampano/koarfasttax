@@ -25,5 +25,10 @@
         public Guid? PortalUserId { get; set; }
 
         public User? PortalUser { get; set; }
+
+        // GHL contact ID
+        public string? GoHighLevelContactId { get; set; }
+
+        public bool NotificationsEnabled { get; set; } = false;
     }
 }

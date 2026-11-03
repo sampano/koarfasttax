@@ -1,6 +1,7 @@
 using JwtAuth.Data;
 using JwtAuth.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
@@ -58,6 +59,8 @@ builder.Services.AddScoped<IClientService, ClientService>();
 
 builder.Services.AddScoped<ITaxCaseService, TaxCaseService>();
 
+builder.Services.AddScoped<IProfileService, ProfileService>();
+
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 
 builder.Services.AddScoped<IDocumentRequestService, DocumentRequestService>();
@@ -65,6 +68,8 @@ builder.Services.AddScoped<IDocumentRequestService, DocumentRequestService>();
 builder.Services.AddScoped<IDocumentRequestService, DocumentRequestService>();
 
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+
+builder.Services.AddHttpClient<IGoHighLevelService, GoHighLevelService>();
 
 builder.Services.AddOptions();
 builder.Services.AddHttpClient<ResendClient>();
@@ -81,6 +86,8 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
+
+
 var app = builder.Build();
 
 app.UseCors("ReactFrontend");
@@ -93,6 +100,19 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+string uploadsPath = Path.Combine(
+    builder.Environment.ContentRootPath,
+    "Uploads"
+);
+
+Directory.CreateDirectory(uploadsPath);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
 
 app.UseAuthorization();
 
