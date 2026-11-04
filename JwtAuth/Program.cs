@@ -71,22 +71,11 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 builder.Services.AddHttpClient<IGoHighLevelService, GoHighLevelService>();
 
-builder.Services.AddOptions();
-builder.Services.AddHttpClient<ResendClient>();
-
-builder.Services.Configure<ResendClientOptions>(options =>
-{
-    options.ApiToken =
-        builder.Configuration["Resend:ApiKey"]!;
-});
-
-builder.Services.AddTransient<IResend, ResendClient>();
+builder.Services.AddScoped<IClientNotificationService, ClientNotificationService>();
 
 builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services.AddScoped<INotificationService, NotificationService>();
-
-
 
 var app = builder.Build();
 

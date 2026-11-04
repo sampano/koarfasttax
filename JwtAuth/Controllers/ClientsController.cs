@@ -366,5 +366,40 @@ namespace JwtAuth.Controllers
                 });
             }
         }
+
+        [HttpGet("portal-users")]
+        public async Task<ActionResult<List<PortalUserDto>>> SearchPortalUsers(
+    [FromQuery] string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return Ok(new List<PortalUserDto>());
+            }
+
+            Guid adminUserId = GetCurrentUserId();
+
+            List<PortalUserDto> users =
+                await _clientService.SearchPortalUsersAsync(
+                    email,
+                    adminUserId
+                );
+
+            return Ok(users);
+        }
+
+        [HttpGet("{clientId}/portal-user-by-email")]
+        public async Task<ActionResult<PortalUserDto?>> GetPortalUserByClientEmail(
+    int clientId)
+        {
+            Guid adminUserId = GetCurrentUserId();
+
+            PortalUserDto? portalUser =
+                await _clientService.GetPortalUserByClientEmailAsync(
+                    clientId,
+                    adminUserId
+                );
+
+            return Ok(portalUser);
+        }
     }
 }

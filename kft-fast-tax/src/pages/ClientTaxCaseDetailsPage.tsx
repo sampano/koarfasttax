@@ -12,6 +12,8 @@ import type { TaxCaseSummary } from "../types/taxCase";
 import TaxCaseStatusBadge from "../components/TaxCaseStatusBadge";
 
 import type { TaxDocument } from "../types/document";
+import Toast from "../components/Toast";
+import ConfirmModal from "../components/ConfirmModal";
 
 function ClientTaxCaseDetailsPage() {
   const { id } = useParams();
@@ -19,16 +21,23 @@ function ClientTaxCaseDetailsPage() {
 
   const [taxCase, setTaxCase] = useState<TaxCaseSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const [documents, setDocuments] = useState<TaxDocument[]>([]);
 
   const [selectedDocumentTypeId, setSelectedDocumentTypeId] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [documentToDelete, setDocumentToDelete] = useState<number | null>(null);
+  const [deletingDocument, setDeletingDocument] = useState(false);
+
+  // State variables for managing notification settings
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
 
   async function loadTaxCase() {
     try {
@@ -41,9 +50,9 @@ function ClientTaxCaseDetailsPage() {
       setDocuments(documentData);
     } catch (error) {
       console.error(error);
-
-      setError(
+      showToast(
         error instanceof Error ? error.message : "Unable to load tax case.",
+        "error",
       );
     } finally {
       setLoading(false);
@@ -72,30 +81,37 @@ function ClientTaxCaseDetailsPage() {
     } catch (error) {
       console.error(error);
 
-      setError(
+      showToast(
         error instanceof Error ? error.message : "Unable to download document.",
+        "error",
       );
     }
   }
-  async function handleDeleteDocument(documentId: number) {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this document?",
-    );
 
-    if (!confirmed) {
+  async function handleDeleteDocument() {
+    if (documentToDelete === null) {
       return;
     }
 
+    setDeletingDocument(true);
+
     try {
-      await deleteMyDocument(documentId);
+      await deleteMyDocument(documentToDelete);
 
       await loadTaxCase();
+
+      setDocumentToDelete(null);
+
+      showToast("Document deleted successfully.", "success");
     } catch (error) {
       console.error(error);
 
-      setError(
+      showToast(
         error instanceof Error ? error.message : "Unable to delete document.",
+        "error",
       );
+    } finally {
+      setDeletingDocument(false);
     }
   }
 
@@ -103,11 +119,10 @@ function ClientTaxCaseDetailsPage() {
     event.preventDefault();
 
     if (!selectedFile || !selectedDocumentTypeId || !taxCase) {
-      setUploadError("Please select a document type and file.");
+      showToast("Please select a document type and file.", "error");
       return;
     }
 
-    setUploadError("");
     setUploading(true);
 
     try {
@@ -124,8 +139,9 @@ function ClientTaxCaseDetailsPage() {
     } catch (error) {
       console.error(error);
 
-      setUploadError(
+      showToast(
         error instanceof Error ? error.message : "Unable to upload document.",
+        "error",
       );
     } finally {
       setUploading(false);
@@ -135,16 +151,19 @@ function ClientTaxCaseDetailsPage() {
     return <div className="p-8">Loading...</div>;
   }
 
-  if (error) {
-    return (
-      <div className="p-8">
-        <p className="rounded-lg bg-red-50 p-4 text-red-600">{error}</p>
-      </div>
-    );
-  }
-
   if (!taxCase) {
     return null;
+  }
+
+  function showToast(message: string, type: "success" | "error") {
+    setToast({
+      message,
+      type,
+    });
+
+    setTimeout(() => {
+      setToast(null);
+    }, 4000);
   }
 
   return (
@@ -245,12 +264,6 @@ function ClientTaxCaseDetailsPage() {
             onSubmit={handleUpload}
             className="rounded-xl bg-white p-6 shadow"
           >
-            {uploadError && (
-              <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                {uploadError}
-              </p>
-            )}
-
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label
@@ -386,6 +399,25 @@ function ClientTaxCaseDetailsPage() {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        open={documentToDelete !== null}
+        title="Delete Document"
+        message="Are you sure you want to delete this document? This action cannot be undone."
+        confirmText="Delete Document"
+        danger
+        loading={deletingDocument}
+        onCancel={() => setDocumentToDelete(null)}
+        onConfirm={handleDeleteDocument}
+      />
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

@@ -38,5 +38,9 @@ namespace JwtAuth.Services
         Task<HashSet<string>> GetImportedGoHighLevelContactIdsAsync(Guid adminUserId);
 
         Task<ClientDto?> UpdateNotificationsEnabledAsync(int clientId, bool enabled, Guid adminUserId);
+
+        Task<List<PortalUserDto>> SearchPortalUsersAsync(string email, Guid adminUserId);
+
+        Task<PortalUserDto?> GetPortalUserByClientEmailAsync(int clientId, Guid adminUserId);
     }
 }

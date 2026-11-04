@@ -1,7 +1,7 @@
 function Header() {
   return (
     <header>
-      <h1>TaxProcify</h1>
+      <h1>KFT Fast Tax</h1>
     </header>
   );
 }

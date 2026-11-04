@@ -1,223 +1,251 @@
-﻿using Resend;
-
-namespace JwtAuth.Services
+﻿namespace JwtAuth.Services
 {
     public class EmailService : IEmailService
     {
-        private readonly IResend _resend;
+        private readonly IGoHighLevelService _goHighLevelService;
 
-        public EmailService(IResend resend)
+        public EmailService(
+            IGoHighLevelService goHighLevelService)
         {
-            _resend = resend;
+            _goHighLevelService = goHighLevelService;
         }
 
         public async Task SendPortalAccountCreatedAsync(
+            string contactId,
             string email,
             string temporaryPassword)
         {
-            var message = new EmailMessage
-            {
-                From = "onboarding@resend.dev",
-                To = email,
-                Subject = "Your TaxProcify Portal Account",
-                HtmlBody = $"""
-                    <h2>Your portal account is ready</h2>
+            string subject = "Your ClientFlow Portal Account";
 
-                    <p>Your TaxProcify client portal account has been created.</p>
+            string html = $"""
+                <h2>Your portal account is ready</h2>
 
-                    <p>
-                        <strong>Email:</strong> {email}<br />
-                        <strong>Temporary Password:</strong> {temporaryPassword}
-                    </p>
+                <p>
+                    Your ClientFlow client portal account has been created.
+                </p>
 
-                    <p>
-                        Please log in and keep your account information secure.
-                    </p>
-                    """
-            };
+                <p>
+                    <strong>Email:</strong> {email}<br />
+                    <strong>Temporary Password:</strong> {temporaryPassword}
+                </p>
 
-            await _resend.EmailSendAsync(message);
+                <p>
+                    Please log in and keep your account information secure.
+                </p>
+                """;
+
+            await _goHighLevelService.SendEmailAsync(
+                contactId,
+                subject,
+                html
+            );
         }
 
         public async Task SendPortalPasswordResetAsync(
+            string contactId,
             string email,
             string temporaryPassword)
         {
-            var message = new EmailMessage
-            {
-                From = "onboarding@resend.dev",
-                To = email,
-                Subject = "Your TaxProcify Password Reset Is Complete",
-                HtmlBody = $"""
-                    <h2>Your password reset is complete</h2>
+            string subject =
+                "Your ClientFlow Password Reset Is Complete";
 
-                    <p>
-                        Your TaxProcify client portal password has been successfully reset.
-                    </p>
+            string html = $"""
+                <h2>Your password reset is complete</h2>
 
-                    <p>
-                        <strong>Email:</strong> {email}<br />
-                        <strong>New Temporary Password:</strong> {temporaryPassword}
-                    </p>
+                <p>
+                    Your ClientFlow client portal password has been
+                    successfully reset.
+                </p>
 
-                    <p>
-                        You can now log in using your new temporary password.
-                    </p>
-                    """
-            };
+                <p>
+                    <strong>Email:</strong> {email}<br />
+                    <strong>New Temporary Password:</strong>
+                    {temporaryPassword}
+                </p>
 
-            await _resend.EmailSendAsync(message);
+                <p>
+                    You can now log in using your new temporary password.
+                </p>
+                """;
+
+            await _goHighLevelService.SendEmailAsync(
+                contactId,
+                subject,
+                html
+            );
         }
 
-        public async Task SendDocumentRequestCreatedAsync(string email, int taxYear, string documentType, string? note)
+        public async Task SendDocumentRequestCreatedAsync(
+            string contactId,
+            int taxYear,
+            string documentType,
+            string? note)
         {
-            var message = new EmailMessage
-            {
-                From = "onboarding@resend.dev",
-                To = email,
-                Subject = $"New document requested for your {taxYear} tax case",
-                HtmlBody = $"""
-            <h2>New document requested</h2>
+            string subject =
+                $"New document requested for your {taxYear} tax case";
 
-            <p>
-                A new document has been requested for your
-                {taxYear} TaxProcify tax case.
-            </p>
+            string html = $"""
+                <h2>New document requested</h2>
 
-            <p>
-                <strong>Document:</strong> {documentType}
-            </p>
+                <p>
+                    A new document has been requested for your
+                    {taxYear} ClientFlow tax case.
+                </p>
 
-            {(string.IsNullOrWhiteSpace(note)
-                        ? ""
-                        : $"<p><strong>Note:</strong> {note}</p>")}
+                <p>
+                    <strong>Document:</strong> {documentType}
+                </p>
 
-            <p>
-                Please log in to your TaxProcify client portal
-                to review the request and upload the document.
-            </p>
-            """
-            };
+                {(string.IsNullOrWhiteSpace(note)
+                    ? ""
+                    : $"<p><strong>Note:</strong> {note}</p>")}
 
-            await _resend.EmailSendAsync(message);
+                <p>
+                    Please log in to your ClientFlow client portal
+                    to review the request and upload the document.
+                </p>
+                """;
+
+            await _goHighLevelService.SendEmailAsync(
+                contactId,
+                subject,
+                html
+            );
         }
 
-        public async Task SendTaxCaseStatusChangedAsync(string email, int taxYear, string status)
+        public async Task SendTaxCaseStatusChangedAsync(
+            string contactId,
+            int taxYear,
+            string status)
         {
-            var message = new EmailMessage
-            {
-                From = "onboarding@resend.dev",
-                To = email,
-                Subject = $"Your {taxYear} Tax Case Status Has Been Updated",
-                HtmlBody = $"""
-            <h2>Your tax case status has been updated</h2>
+            string subject =
+                $"Your {taxYear} Tax Case Status Has Been Updated";
 
-            <p>
-                The status of your {taxYear} TaxProcify tax case has changed.
-            </p>
+            string html = $"""
+                <h2>Your tax case status has been updated</h2>
 
-            <p>
-                <strong>Current Status:</strong> {status}
-            </p>
+                <p>
+                    The status of your {taxYear}
+                    ClientFlow tax case has changed.
+                </p>
 
-            <p>
-                Please log in to your TaxProcify client portal
-                to review your case.
-            </p>
-            """
-            };
+                <p>
+                    <strong>Current Status:</strong> {status}
+                </p>
 
-            await _resend.EmailSendAsync(message);
+                <p>
+                    Please log in to your ClientFlow client portal
+                    to review your case.
+                </p>
+                """;
+
+            await _goHighLevelService.SendEmailAsync(
+                contactId,
+                subject,
+                html
+            );
         }
 
         public async Task SendDocumentUploadedAsync(
-    string email,
-    int taxYear,
-    string documentType)
+            string contactId,
+            int taxYear,
+            string documentType)
         {
-            var message = new EmailMessage
-            {
-                From = "onboarding@resend.dev",
-                To = email,
-                Subject = $"Document received for your {taxYear} tax case",
-                HtmlBody = $"""
-            <h2>Your document was received</h2>
+            string subject =
+                $"Document received for your {taxYear} tax case";
 
-            <p>
-                We successfully received your document for your
-                {taxYear} TaxProcify tax case.
-            </p>
+            string html = $"""
+                <h2>Your document was received</h2>
 
-            <p>
-                <strong>Document:</strong> {documentType}
-            </p>
+                <p>
+                    We successfully received your document for your
+                    {taxYear} ClientFlow tax case.
+                </p>
 
-            <p>
-                No further action is required for this document
-                unless your tax professional contacts you.
-            </p>
-            """
-            };
+                <p>
+                    <strong>Document:</strong> {documentType}
+                </p>
 
-            await _resend.EmailSendAsync(message);
+                <p>
+                    No further action is required for this document
+                    unless your tax professional contacts you.
+                </p>
+                """;
+
+            await _goHighLevelService.SendEmailAsync(
+                contactId,
+                subject,
+                html
+            );
         }
 
-        public async Task SendAllDocumentsCompletedAsync(string email, int taxYear)
+        public async Task SendAllDocumentsCompletedAsync(
+            string contactId,
+            int taxYear)
         {
-            var message = new EmailMessage
-            {
-                From = "onboarding@resend.dev",
-                To = email,
-                Subject = $"All documents received for your {taxYear} tax case",
-                HtmlBody = $"""
-            <h2>All requested documents have been received</h2>
+            string subject =
+                $"All documents received for your {taxYear} tax case";
 
-            <p>
-                We have received all requested documents for your
-                {taxYear} TaxProcify tax case.
-            </p>
+            string html = $"""
+                <h2>All requested documents have been received</h2>
 
-            <p>
-                Your tax professional can now continue reviewing your case.
-            </p>
+                <p>
+                    We have received all requested documents for your
+                    {taxYear} ClientFlow tax case.
+                </p>
 
-            <p>
-                You can log in to your TaxProcify client portal
-                to check the current status of your tax case.
-            </p>
-            """
-            };
+                <p>
+                    Your tax professional can now continue reviewing
+                    your case.
+                </p>
 
-            await _resend.EmailSendAsync(message);
+                <p>
+                    You can log in to your ClientFlow client portal
+                    to check the current status of your tax case.
+                </p>
+                """;
+
+            await _goHighLevelService.SendEmailAsync(
+                contactId,
+                subject,
+                html
+            );
         }
 
-        public async Task SendAdminDocumentUploadedAsync(string adminEmail, string clientName, int taxYear, string documentType, string fileName)
+        public async Task SendAdminDocumentUploadedAsync(
+            string contactId,
+            string clientName,
+            int taxYear,
+            string documentType,
+            string fileName)
         {
-            var message = new EmailMessage
-            {
-                From = "onboarding@resend.dev",
-                To = adminEmail,
-                Subject = $"{clientName} uploaded a document",
-                HtmlBody = $"""
-            <h2>New client document uploaded</h2>
+            string subject =
+                $"{clientName} uploaded a document";
 
-            <p>
-                {clientName} uploaded a new document
-                for their {taxYear} tax case.
-            </p>
+            string html = $"""
+                <h2>New client document uploaded</h2>
 
-            <p>
-                <strong>Document:</strong> {documentType}<br />
-                <strong>File:</strong> {fileName}
-            </p>
+                <p>
+                    {clientName} uploaded a new document
+                    for their {taxYear} tax case.
+                </p>
 
-            <p>
-                Log in to TaxProcify to review the uploaded document.
-            </p>
-            """
-            };
+                <p>
+                    <strong>Document:</strong> {documentType}<br />
+                    <strong>File:</strong> {fileName}
+                </p>
 
-            await _resend.EmailSendAsync(message);
+                <p>
+                    Log in to ClientFlow to review
+                    the uploaded document.
+                </p>
+                """;
+
+            await _goHighLevelService.SendEmailAsync(
+                contactId,
+                subject,
+                html
+            );
         }
     }
 }

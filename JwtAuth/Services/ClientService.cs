@@ -256,6 +256,19 @@ namespace JwtAuth.Services
                     "Client portal user not found.");
             }
 
+            if (
+                !string.Equals(
+                portalUser.Email.Trim(),
+                client.Email.Trim(),
+                StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                throw new InvalidOperationException(
+                    "The portal user's email must match the client's email."
+                );
+            }
+
             client.PortalUserId = portalUser.Id;
 
             await _context.SaveChangesAsync();
@@ -420,13 +433,49 @@ namespace JwtAuth.Services
                     "This client already has a portal account.");
             }
 
-            bool emailExists = await _context.Users
-                .AnyAsync(user => user.Email == client.Email);
+            User? existingPortalUser = await _context.Users
+    .FirstOrDefaultAsync(user =>
+        user.Email == client.Email &&
+        user.Role == "Client");
 
-            if (emailExists)
+            if (existingPortalUser is not null)
             {
-                throw new InvalidOperationException(
-                    "A user account with this email already exists.");
+                bool alreadyAssigned = await _context.Clients
+                    .AnyAsync(existingClient =>
+                        existingClient.PortalUserId == existingPortalUser.Id &&
+                        existingClient.Id != client.Id);
+
+                if (alreadyAssigned)
+                {
+                    throw new InvalidOperationException(
+                        "A portal account with this email is already assigned to another client."
+                    );
+                }
+
+                client.PortalUserId = existingPortalUser.Id;
+
+                existingPortalUser.PasswordHash =
+                    new PasswordHasher<User>()
+                        .HashPassword(existingPortalUser, password);
+
+                existingPortalUser.RefreshToken = null;
+                existingPortalUser.RefreshTokenExpiryTime = null;
+
+                await _context.SaveChangesAsync();
+
+                if (
+                    client.NotificationsEnabled &&
+                    !string.IsNullOrWhiteSpace(client.GoHighLevelContactId)
+                )
+                {
+                    await _emailService.SendPortalAccountCreatedAsync(
+                        client.GoHighLevelContactId,
+                        client.Email,
+                        password
+                    );
+                }
+
+                return true;
             }
 
             var user = new User
@@ -444,8 +493,14 @@ namespace JwtAuth.Services
 
             await _context.SaveChangesAsync();
 
-            await _emailService.SendPortalAccountCreatedAsync(client.Email, password);
-            
+            if (client.NotificationsEnabled && !string.IsNullOrWhiteSpace(client.GoHighLevelContactId))
+            {
+                await _emailService.SendPortalAccountCreatedAsync(
+                    client.GoHighLevelContactId,
+                    client.Email,
+                    password
+                );
+            }
             return true;
         }
 
@@ -506,9 +561,14 @@ namespace JwtAuth.Services
             await _context.SaveChangesAsync();
 
             //Call the reset-email method from existing client
-            await _emailService.SendPortalPasswordResetAsync(
-            portalUser.Email,
-            password);
+            if (client.NotificationsEnabled && !string.IsNullOrWhiteSpace(client.GoHighLevelContactId))
+            {
+                await _emailService.SendPortalPasswordResetAsync(
+                    client.GoHighLevelContactId,
+                    portalUser.Email,
+                    password
+                );
+            }
 
             return true;
         }
@@ -702,6 +762,69 @@ namespace JwtAuth.Services
                 PortalUserId = client.PortalUserId,
                 GoHighLevelContactId = client.GoHighLevelContactId,
                 NotificationsEnabled = client.NotificationsEnabled
+            };
+        }
+
+        public async Task<List<PortalUserDto>> SearchPortalUsersAsync(
+    string email,
+    Guid adminUserId)
+        {
+            email = email.Trim().ToLower();
+
+            var users = await _context.Users
+                .Where(user =>
+                    user.Role == "Client" &&
+                    user.Email.ToLower().Contains(email))
+                .Select(user => new PortalUserDto
+                {
+                    Id = user.Id,
+                    Email = user.Email,
+
+                    IsAssigned = _context.Clients.Any(client =>
+                        client.PortalUserId == user.Id &&
+                        client.UserId == adminUserId)
+                })
+                .Take(10)
+                .ToListAsync();
+
+            return users;
+        }
+
+        public async Task<PortalUserDto?> GetPortalUserByClientEmailAsync(
+    int clientId,
+    Guid adminUserId)
+        {
+            Client? client = await _context.Clients
+                .FirstOrDefaultAsync(client =>
+                    client.Id == clientId &&
+                    client.UserId == adminUserId);
+
+            if (client is null)
+            {
+                return null;
+            }
+
+            string email = client.Email.Trim().ToLower();
+
+            User? portalUser = await _context.Users
+                .FirstOrDefaultAsync(user =>
+                    user.Role == "Client" &&
+                    user.Email.ToLower() == email);
+
+            if (portalUser is null)
+            {
+                return null;
+            }
+
+            bool isAssigned = await _context.Clients
+                .AnyAsync(client =>
+                    client.PortalUserId == portalUser.Id);
+
+            return new PortalUserDto
+            {
+                Id = portalUser.Id,
+                Email = portalUser.Email,
+                IsAssigned = isAssigned
             };
         }
     }

@@ -20,6 +20,8 @@ import {
   updateDocumentRequestNote,
   deleteDocumentRequest,
 } from "../api/documentRequests";
+import ConfirmModal from "../components/ConfirmModal";
+import Toast from "../components/Toast";
 
 type RecentDocument = {
   id: number;
@@ -42,9 +44,29 @@ function TaxCaseDetailsPage() {
   const [selectedDocumentTypeId, setSelectedDocumentTypeId] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // State for deleting documents
+  const [documentToDelete, setDocumentToDelete] = useState<number | null>(null);
+  const [deletingDocument, setDeletingDocument] = useState(false);
+
+  // State for deleting document requests
+  const [documentRequestToDelete, setDocumentRequestToDelete] = useState<
+    number | null
+  >(null);
+  const [deletingDocumentRequest, setDeletingDocumentRequest] = useState(false);
+
+  // State for deleting tax case
+  const [showDeleteTaxCaseConfirm, setShowDeleteTaxCaseConfirm] =
+    useState(false);
+  const [deletingTaxCase, setDeletingTaxCase] = useState(false);
+
+  // State variables for managing notification settings
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
 
   // State for editing document requests
   const [editingRequestId, setEditingRequestId] = useState<number | null>(null);
@@ -63,7 +85,6 @@ function TaxCaseDetailsPage() {
   // State for tax case details
   const [taxCase, setTaxCase] = useState<TaxCaseSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   // State for editing tax case details
   const [editingTaxCase, setEditingTaxCase] = useState(false);
@@ -92,7 +113,10 @@ function TaxCaseDetailsPage() {
       setTaxCase(data);
     } catch (error) {
       console.error(error);
-      setError("Unable to connect to the server.");
+      showToast(
+        error instanceof Error ? error.message : "Unable to load tax case.",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
@@ -108,11 +132,11 @@ function TaxCaseDetailsPage() {
     event.preventDefault();
 
     if (!selectedFile || !selectedDocumentTypeId || !taxCase) {
-      setUploadError("Please select a document type and file.");
+      showToast("Please select a document type and file.", "error");
+
       return;
     }
 
-    setUploadError("");
     setUploading(true);
 
     try {
@@ -128,7 +152,11 @@ function TaxCaseDetailsPage() {
       }
     } catch (error) {
       console.error(error);
-      setUploadError("Unable to upload document.");
+
+      showToast(
+        error instanceof Error ? error.message : "Unable to upload document.",
+        "error",
+      );
     } finally {
       setUploading(false);
     }
@@ -152,26 +180,37 @@ function TaxCaseDetailsPage() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error(error);
-      setError("Unable to download document.");
+      showToast(
+        error instanceof Error ? error.message : "Unable to download document.",
+        "error",
+      );
     }
   }
 
-  async function handleDeleteDocument(documentId: number) {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this document?",
-    );
-
-    if (!confirmed) {
+  async function handleDeleteDocument() {
+    if (documentToDelete === null) {
       return;
     }
 
+    setDeletingDocument(true);
+
     try {
-      await deleteTaxDocument(documentId);
+      await deleteTaxDocument(documentToDelete);
 
       await loadTaxCase();
+
+      setDocumentToDelete(null);
+
+      showToast("Document deleted successfully.", "success");
     } catch (error) {
       console.error(error);
-      setError("Unable to delete document.");
+
+      showToast(
+        error instanceof Error ? error.message : "Unable to delete document.",
+        "error",
+      );
+    } finally {
+      setDeletingDocument(false);
     }
   }
 
@@ -230,24 +269,32 @@ function TaxCaseDetailsPage() {
   }
 
   // Function for deleting a document request
-  async function handleDeleteRequest(documentRequestId: number) {
-    const confirmed = window.confirm(
-      "Remove this required document from the tax case?",
-    );
-
-    if (!confirmed) {
+  async function handleDeleteRequest() {
+    if (documentRequestToDelete === null) {
       return;
     }
 
-    setRequestActionError("");
+    setDeletingDocumentRequest(true);
 
     try {
-      await deleteDocumentRequest(documentRequestId);
+      await deleteDocumentRequest(documentRequestToDelete);
 
       await loadTaxCase();
+
+      setDocumentRequestToDelete(null);
+
+      showToast("Required document removed successfully.", "success");
     } catch (error) {
       console.error(error);
-      setRequestActionError("Unable to remove required document.");
+
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Unable to remove required document.",
+        "error",
+      );
+    } finally {
+      setDeletingDocumentRequest(false);
     }
   }
 
@@ -297,29 +344,39 @@ function TaxCaseDetailsPage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Are you sure you want to delete tax year ${taxCase.taxYear}?`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
+    setDeletingTaxCase(true);
 
     try {
       await deleteTaxCase(taxCase.id);
+
+      showToast(`Tax year ${taxCase.taxYear} deleted successfully.`, "success");
 
       navigate(`/clients/${taxCase.clientId}`);
     } catch (error) {
       console.error(error);
 
-      setTaxCaseEditError(
+      showToast(
         error instanceof Error ? error.message : "Unable to delete tax case.",
+        "error",
       );
+    } finally {
+      setDeletingTaxCase(false);
     }
   }
 
   if (!taxCase) {
     return null;
+  }
+
+  function showToast(message: string, type: "success" | "error") {
+    setToast({
+      message,
+      type,
+    });
+
+    setTimeout(() => {
+      setToast(null);
+    }, 4000);
   }
 
   const currentTaxCase = taxCase;
@@ -360,7 +417,7 @@ function TaxCaseDetailsPage() {
 
             <button
               type="button"
-              onClick={handleDeleteTaxCase}
+              onClick={() => setShowDeleteTaxCaseConfirm(true)}
               className="rounded-lg bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
             >
               Delete Tax Case
@@ -595,7 +652,7 @@ function TaxCaseDetailsPage() {
 
                       <button
                         type="button"
-                        onClick={() => handleDeleteRequest(document.id)}
+                        onClick={() => setDocumentRequestToDelete(document.id)}
                         className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
                       >
                         Remove
@@ -654,12 +711,6 @@ function TaxCaseDetailsPage() {
             onSubmit={handleUpload}
             className="rounded-xl bg-white p-6 shadow"
           >
-            {uploadError && (
-              <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                {uploadError}
-              </p>
-            )}
-
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label
@@ -777,7 +828,7 @@ function TaxCaseDetailsPage() {
 
                           <button
                             type="button"
-                            onClick={() => handleDeleteDocument(document.id)}
+                            onClick={() => setDocumentToDelete(document.id)}
                             className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
                           >
                             Delete
@@ -795,6 +846,51 @@ function TaxCaseDetailsPage() {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        open={documentToDelete !== null}
+        title="Delete Document"
+        message="Are you sure you want to delete this document? This action cannot be undone."
+        confirmText="Delete Document"
+        danger
+        loading={deletingDocument}
+        onCancel={() => setDocumentToDelete(null)}
+        onConfirm={handleDeleteDocument}
+      />
+
+      <ConfirmModal
+        open={documentRequestToDelete !== null}
+        title="Remove Required Document"
+        message="Remove this required document from the tax case?"
+        confirmText="Remove Document"
+        danger
+        loading={deletingDocumentRequest}
+        onCancel={() => setDocumentRequestToDelete(null)}
+        onConfirm={handleDeleteRequest}
+      />
+
+      <ConfirmModal
+        open={showDeleteTaxCaseConfirm}
+        title="Delete Tax Case"
+        message={
+          taxCase
+            ? `Are you sure you want to delete tax year ${taxCase.taxYear}? This action cannot be undone.`
+            : ""
+        }
+        confirmText="Delete Tax Case"
+        danger
+        loading={deletingTaxCase}
+        onCancel={() => setShowDeleteTaxCaseConfirm(false)}
+        onConfirm={handleDeleteTaxCase}
+      />
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,10 @@
 import { apiFetch } from "./apiClient";
-import type { Client, PagedClients } from "../types/client";
+import type {
+  Client,
+  PagedClients,
+  GoHighLevelContact,
+  PortalUser,
+} from "../types/client";
 
 export async function getClients(
   search: string,
@@ -233,4 +238,114 @@ export async function resetPortalPassword(
   }
 
   throw new Error(message);
+}
+
+export async function syncClientToGoHighLevel(
+  clientId: number,
+): Promise<Client> {
+  const response = await apiFetch(`/Clients/${clientId}/sync-ghl`, {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+
+    throw new Error(error.message ?? "Unable to sync client to GoHighLevel.");
+  }
+
+  return response.json();
+}
+
+export async function getGoHighLevelContacts(
+  keyword: string,
+): Promise<GoHighLevelContact[]> {
+  const params = new URLSearchParams();
+
+  params.set("keyword", keyword.trim());
+
+  const response = await apiFetch(`/Clients/ghl-contacts?${params.toString()}`);
+
+  if (!response.ok) {
+    const text = await response.text();
+
+    throw new Error(text || "Failed to search GoHighLevel contacts.");
+  }
+
+  return response.json();
+}
+
+export async function importGoHighLevelContact(
+  ghlContactId: string,
+): Promise<Client> {
+  const response = await apiFetch(`/Clients/import-ghl/${ghlContactId}`, {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    const data = await response.json();
+
+    throw new Error(data.message ?? "Failed to import GoHighLevel contact.");
+  }
+
+  return response.json();
+}
+
+export async function updateClientNotifications(
+  clientId: number,
+  enabled: boolean,
+): Promise<Client> {
+  const response = await apiFetch(`/Clients/${clientId}/notifications`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      enabled,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+
+    let message = "Failed to update notification settings.";
+
+    if (text) {
+      try {
+        const data = JSON.parse(text);
+        message = data.message ?? text;
+      } catch {
+        message = text;
+      }
+    }
+
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+export async function searchPortalUsers(email: string): Promise<PortalUser[]> {
+  const params = new URLSearchParams();
+
+  params.set("email", email.trim());
+
+  const response = await apiFetch(`/Clients/portal-users?${params.toString()}`);
+
+  if (!response.ok) {
+    throw new Error("Failed to search portal users.");
+  }
+
+  return response.json();
+}
+
+export async function getPortalUserByClientEmail(
+  clientId: number,
+): Promise<PortalUser | null> {
+  const response = await apiFetch(`/Clients/${clientId}/portal-user-by-email`);
+
+  if (!response.ok) {
+    throw new Error("Failed to check existing portal account.");
+  }
+
+  return response.json();
 }

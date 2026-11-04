@@ -1,10 +1,10 @@
 import { apiFetch } from "./apiClient";
-
 export type Notification = {
   id: number;
   userId: string;
   title: string;
   message: string;
+  link: string | null;
   isRead: boolean;
   createdAt: string;
 };

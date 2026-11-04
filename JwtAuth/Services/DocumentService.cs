@@ -11,20 +11,21 @@ namespace JwtAuth.Services
     {
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _environment;
-        private readonly IEmailService _emailService;
+        private readonly IClientNotificationService _clientNotificationService;
         private readonly INotificationService _notificationService;
 
         public DocumentService(
-            AppDbContext context,
-            IWebHostEnvironment environment, IEmailService emailService, INotificationService notificationService)
+       AppDbContext context,
+       IWebHostEnvironment environment,
+       IClientNotificationService clientNotificationService,
+       INotificationService notificationService)
         {
             _context = context;
             _environment = environment;
-            _emailService = emailService;
+            _clientNotificationService = clientNotificationService;
             _notificationService = notificationService;
         }
-        
-        
+
         public async Task<DocumentDto?> UploadDocumentAsync(int taxCaseId, IFormFile file, int documentTypeId, Guid userId)
             {
                 TaxCase? taxCase = await _context.TaxCases
@@ -390,9 +391,46 @@ namespace JwtAuth.Services
 
             if (hasDocumentRequests && !hasIncompleteRequests)
             {
-                await _emailService.SendAllDocumentsCompletedAsync(
-                    taxCase.Client.Email,
-                    taxCase.TaxYear);
+                if (
+                    taxCase.Client.NotificationsEnabled &&
+                    !string.IsNullOrWhiteSpace(
+                        taxCase.Client.GoHighLevelContactId
+                    )
+                )
+                {
+                    string subject =
+                        $"All documents received for your {taxCase.TaxYear} tax case";
+
+                    string html = $"""
+            <h2>All requested documents have been received</h2>
+
+            <p>
+                We have received all requested documents for your
+                {taxCase.TaxYear} ClientFlow tax case.
+            </p>
+
+            <p>
+                Your tax professional can now continue reviewing your case.
+            </p>
+
+            <p>
+                You can log in to your ClientFlow client portal
+                to check the current status of your tax case.
+            </p>
+            """;
+
+                    string smsMessage =
+                        $"ClientFlow: All requested documents for your " +
+                        $"{taxCase.TaxYear} tax case have been received.";
+
+                    await _clientNotificationService.SendAsync(
+                        taxCase.Client.GoHighLevelContactId,
+                        taxCase.Client.Phone,
+                        subject,
+                        html,
+                        smsMessage
+                    );
+                }
 
                 if (taxCase.Client.PortalUserId is not null)
                 {
@@ -415,26 +453,61 @@ namespace JwtAuth.Services
 
                 if (documentType is not null)
                 {
-                    string clientName = $"{taxCase.Client.FirstName} {taxCase.Client.LastName}";
+                string clientName = $"{taxCase.Client.FirstName} {taxCase.Client.LastName}";
 
                 await _notificationService.CreateNotificationAsync(
                     taxCase.Client.UserId,
                     "New document uploaded",
                     $"{clientName} uploaded {documentType.Name} for tax year {taxCase.TaxYear}.",
                     $"/tax-cases/{taxCase.Id}"
+                );
+
+                if (
+                    taxCase.Client.NotificationsEnabled &&
+                    !string.IsNullOrWhiteSpace(
+                        taxCase.Client.GoHighLevelContactId
+                    )
+                )
+                {
+                    string subject =
+                        $"Document received for your {taxCase.TaxYear} tax case";
+
+                    string html = $"""
+                    <h2>Your document was received</h2>
+
+                    <p>
+                        We successfully received your document for your
+                        {taxCase.TaxYear} ClientFlow tax case.
+                    </p>
+
+                    <p>
+                        <strong>Document:</strong> {documentType.Name}
+                    </p>
+
+                    <p>
+                        No further action is required for this document
+                        unless your tax professional contacts you.
+                    </p>
+                    """;
+
+                    string smsMessage =
+                        $"ClientFlow: We received your {documentType.Name} " +
+                        $"for your {taxCase.TaxYear} tax case.";
+
+                    await _clientNotificationService.SendAsync(
+                        taxCase.Client.GoHighLevelContactId,
+                        taxCase.Client.Phone,
+                        subject,
+                        html,
+                        smsMessage
                     );
-
-                await _emailService.SendDocumentUploadedAsync(
-                    taxCase.Client.Email,
-                    taxCase.TaxYear,
-                    documentType.Name);
-
-                await _emailService.SendAdminDocumentUploadedAsync(
+                }
+                /*await _emailService.SendAdminDocumentUploadedAsync(
                    taxCase.Client.User.Email,
                    $"{taxCase.Client.FirstName} {taxCase.Client.LastName}",
                    taxCase.TaxYear,
                    documentType.Name,
-                   document.FileName);
+                   document.FileName);*/
             }
             return new DocumentDto
             {

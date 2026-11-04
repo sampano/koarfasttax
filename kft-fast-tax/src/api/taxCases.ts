@@ -46,7 +46,20 @@ export async function createTaxCase(
   });
 
   if (!response.ok) {
-    throw new Error("Failed to create tax case.");
+    const text = await response.text();
+
+    let message = "Failed to create tax case.";
+
+    if (text) {
+      try {
+        const data = JSON.parse(text);
+        message = data.message ?? text;
+      } catch {
+        message = text;
+      }
+    }
+
+    throw new Error(message);
   }
 
   return response.json();

@@ -28,7 +28,10 @@ function AddTaxCasePage() {
       navigate(`/clients/${clientId}`);
     } catch (error) {
       console.error(error);
-      setError("Unable to connect to the server.");
+
+      setError(
+        error instanceof Error ? error.message : "Unable to create tax case.",
+      );
     } finally {
       setSubmitting(false);
     }

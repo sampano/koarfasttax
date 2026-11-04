@@ -10,7 +10,7 @@ namespace JwtAuth.Services
     public class TaxCaseService : ITaxCaseService
     {
         private readonly AppDbContext _context;
-        private readonly IEmailService _emailService;
+        private readonly IClientNotificationService _clientNotificationService;
 
         private readonly INotificationService _notificationService;
 
@@ -48,14 +48,15 @@ namespace JwtAuth.Services
                     * 100, 2)
         };
 
-        public TaxCaseService(AppDbContext context, IEmailService emailService, INotificationService notificationService)
+        public TaxCaseService(
+       AppDbContext context,
+       IClientNotificationService clientNotificationService,
+       INotificationService notificationService)
         {
             _context = context;
-            _emailService = emailService;
+            _clientNotificationService = clientNotificationService;
             _notificationService = notificationService;
-
         }
-
         public async Task<List<TaxCaseDto>> GetTaxCaseByClientAsync(int clientId, Guid userId)
         {
             return await _context.TaxCases
@@ -170,11 +171,45 @@ namespace JwtAuth.Services
             {
                 string formattedStatus = FormatTaxCaseStatus(taxCase.Status);
 
-                await _emailService.SendTaxCaseStatusChangedAsync(
-                    taxCase.Client.Email,
-                    taxCase.TaxYear,
-                    formattedStatus);
+                if (
+                    taxCase.Client.NotificationsEnabled &&
+                    !string.IsNullOrWhiteSpace(taxCase.Client.GoHighLevelContactId)
+                    )
 
+                {
+                            string subject =
+                $"Your {taxCase.TaxYear} Tax Case Status Has Been Updated";
+
+                                string html = $"""
+                <h2>Your tax case status has been updated</h2>
+
+                <p>
+                    The status of your {taxCase.TaxYear}
+                    ClientFlow tax case has changed.
+                </p>
+
+                <p>
+                    <strong>Current Status:</strong> {formattedStatus}
+                </p>
+
+                <p>
+                    Please log in to your ClientFlow client portal
+                    to review your case.
+                </p>
+                """;
+
+                    string smsMessage =
+                        $"ClientFlow: Your {taxCase.TaxYear} tax case status is now {formattedStatus}.";
+
+                    await _clientNotificationService.SendAsync(
+                        taxCase.Client.GoHighLevelContactId,
+                        taxCase.Client.Phone,
+                        subject,
+                        html,
+                        smsMessage
+                    );
+      
+                }
                 if (taxCase.Client.PortalUserId is not null)
                 {
                     await _notificationService.CreateNotificationAsync(

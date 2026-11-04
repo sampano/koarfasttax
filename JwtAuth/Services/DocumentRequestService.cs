@@ -8,17 +8,15 @@ namespace JwtAuth.Services
     public class DocumentRequestService : IDocumentRequestService
     {
         private readonly AppDbContext _context;
-        private readonly IEmailService _emailService;
-
+        private readonly IClientNotificationService _clientNotificationService;
         private readonly INotificationService _notificationService;
 
-        public DocumentRequestService(AppDbContext context, IEmailService emailService, INotificationService notificationService)
+        public DocumentRequestService(AppDbContext context, IClientNotificationService clientNotificationService, INotificationService notificationService)
         {
             _context = context;
-            _emailService = emailService;
+            _clientNotificationService = clientNotificationService;
             _notificationService = notificationService;
         }
-
         public async Task<DocumentRequestDto?> CreateDocumentRequestAsync(
             int taxCaseId,
             CreateDocumentRequestDto request,
@@ -72,12 +70,48 @@ namespace JwtAuth.Services
 
             await _context.SaveChangesAsync();
 
-            await _emailService.SendDocumentRequestCreatedAsync(
-                taxCase.Client.Email,
-                taxCase.TaxYear,
-                documentType.Name,
-                request.Note);
+            if (
+                 taxCase.Client.NotificationsEnabled &&
+                 !string.IsNullOrWhiteSpace(taxCase.Client.GoHighLevelContactId)
+             )
+            {
+                string subject =
+                    $"New document requested for your {taxCase.TaxYear} tax case";
 
+                string html = $"""
+                <h2>New document requested</h2>
+
+                <p>
+                    A new document has been requested for your
+                    {taxCase.TaxYear} ClientFlow tax case.
+                </p>
+
+                <p>
+                    <strong>Document:</strong> {documentType.Name}
+                </p>
+
+                {(string.IsNullOrWhiteSpace(request.Note)
+                                ? ""
+                                : $"<p><strong>Note:</strong> {request.Note}</p>")}
+
+                <p>
+                    Please log in to your ClientFlow client portal
+                    to review the request and upload the document.
+                </p>
+                """;
+
+                        string smsMessage =
+                            $"ClientFlow: {documentType.Name} was requested for your " +
+                            $"{taxCase.TaxYear} tax case. Please log in to your portal.";
+
+                        await _clientNotificationService.SendAsync(
+                            taxCase.Client.GoHighLevelContactId,
+                            taxCase.Client.Phone,
+                            subject,
+                            html,
+                            smsMessage
+                        );
+            }
             if (taxCase.Client.PortalUserId is not null)
             {
                 await _notificationService.CreateNotificationAsync(

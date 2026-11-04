@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { apiFetch } from "../api/apiClient";
 import TaxCaseStatusBadge from "../components/TaxCaseStatusBadge";
-import type { Client } from "../types/client";
+import type { Client, PortalUser } from "../types/client";
 import type { TaxCase } from "../types/taxCase";
 import {
   getClientById,
@@ -12,8 +11,14 @@ import {
   createPortalAccount,
   unassignPortalUser,
   resetPortalPassword,
+  syncClientToGoHighLevel,
+  updateClientNotifications,
+  searchPortalUsers,
+  getPortalUserByClientEmail,
 } from "../api/clients";
 import { getTaxCasesByClient } from "../api/taxCases";
+import Toast from "../components/Toast";
+import ConfirmModal from "../components/ConfirmModal";
 
 function ClientDetailsPage() {
   // Get the client ID from the URL parameters and set up navigation
@@ -35,10 +40,26 @@ function ClientDetailsPage() {
   const [editError, setEditError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const [portalUserId, setPortalUserId] = useState("");
+  // State variables for syncing with GoHighLevel
+  const [syncingGhl, setSyncingGhl] = useState(false);
+
+  // State variables for managing portal user assignment
+  const [portalUserSearch, setPortalUserSearch] = useState("");
+  const [portalUsers, setPortalUsers] = useState<PortalUser[]>([]);
+  const [searchingPortalUsers, setSearchingPortalUsers] = useState(false);
+
   const [assigningPortalUser, setAssigningPortalUser] = useState(false);
-  const [portalError, setPortalError] = useState("");
-  const [portalSuccess, setPortalSuccess] = useState("");
+
+  // State variables for managing notification settings
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
+
+  // State variables for managing portal account password reset
+  const [showGhlConfirm, setShowGhlConfirm] = useState(false);
+  // State variables for managing portal account password reset
+  const [showUnlinkConfirm, setShowUnlinkConfirm] = useState(false);
 
   const [resetPassword, setResetPassword] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
@@ -49,10 +70,17 @@ function ClientDetailsPage() {
   const [showPasswordResetSuccess, setShowPasswordResetSuccess] =
     useState(false);
 
-  const [showPortalErrorModal, setShowPortalErrorModal] = useState(false);
-
   const [portalPassword, setPortalPassword] = useState("");
   const [creatingPortalAccount, setCreatingPortalAccount] = useState(false);
+
+  // State variable for checking if a portal user already exists
+  const [existingPortalUser, setExistingPortalUser] =
+    useState<PortalUser | null>(null);
+  const [checkingPortalUser, setCheckingPortalUser] = useState(false);
+
+  // State variables for updating notifications
+  const [updatingNotifications, setUpdatingNotifications] = useState(false);
+  const [notificationError, setNotificationError] = useState("");
 
   useEffect(() => {
     async function loadClient() {
@@ -60,6 +88,20 @@ function ClientDetailsPage() {
         const data = await getClientById(id!);
 
         setClient(data);
+
+        if (!data.portalUserId) {
+          setCheckingPortalUser(true);
+
+          try {
+            const portalUser = await getPortalUserByClientEmail(data.id);
+
+            setExistingPortalUser(portalUser);
+          } finally {
+            setCheckingPortalUser(false);
+          }
+        } else {
+          setExistingPortalUser(null);
+        }
 
         const taxCaseData = await getTaxCasesByClient(id!);
 
@@ -126,14 +168,6 @@ function ClientDetailsPage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${client.firstName} ${client.lastName}?`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
     try {
       await deleteClient(client.id);
 
@@ -144,41 +178,66 @@ function ClientDetailsPage() {
     }
   }
 
-  async function handleAssignPortalUser(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-
+  async function handleAssignPortalUser(portalUser: PortalUser) {
     if (!client) {
       return;
     }
 
-    if (!portalUserId.trim()) {
-      setPortalError("Please enter a portal user ID.");
-      return;
-    }
-
-    setPortalError("");
-    setPortalSuccess("");
     setAssigningPortalUser(true);
 
     try {
-      await assignPortalUser(client.id, portalUserId.trim());
+      await assignPortalUser(client.id, portalUser.id);
 
       await reloadClient();
 
-      setPortalSuccess("Portal user assigned successfully.");
-      setPortalUserId("");
+      showToast(
+        `Portal user ${portalUser.email} assigned successfully.`,
+        "success",
+      );
+
+      setPortalUsers([]);
+      setPortalUserSearch("");
     } catch (error) {
       console.error(error);
 
-      setPortalError(
+      showToast(
         error instanceof Error
           ? error.message
           : "Unable to assign portal user.",
+        "error",
       );
     } finally {
       setAssigningPortalUser(false);
+    }
+  }
+
+  // Function to handle syncing the client to GoHighLevel
+  async function handleSyncToGoHighLevel() {
+    if (!client) {
+      return;
+    }
+
+    setSyncingGhl(true);
+
+    try {
+      const updatedClient = await syncClientToGoHighLevel(client.id);
+
+      setClient(updatedClient);
+
+      setShowGhlConfirm(false);
+
+      showToast("Client successfully synced to GoHighLevel.", "success");
+    } catch (error) {
+      console.error(error);
+
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Unable to sync client to GoHighLevel.",
+        "error",
+      );
+    } finally {
+      setSyncingGhl(false);
     }
   }
 
@@ -192,12 +251,10 @@ function ClientDetailsPage() {
     }
 
     if (!portalPassword.trim()) {
-      setPortalError("Please enter a temporary password.");
+      showToast("Please enter a temporary password.", "error");
       return;
     }
 
-    setPortalError("");
-    setPortalSuccess("");
     setCreatingPortalAccount(true);
 
     try {
@@ -205,20 +262,21 @@ function ClientDetailsPage() {
 
       await reloadClient();
 
-      setPortalSuccess(
+      showToast(
         `Portal account created successfully for ${client.email}.`,
+        "success",
       );
 
       setPortalPassword("");
     } catch (error) {
       console.error(error);
 
-      setPortalError(
+      showToast(
         error instanceof Error
           ? error.message
           : "Unable to create portal account.",
+        "error",
       );
-      setShowPortalErrorModal(true);
     } finally {
       setCreatingPortalAccount(false);
     }
@@ -229,16 +287,10 @@ function ClientDetailsPage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      "Are you sure you want to unlink this portal account?",
-    );
+    setShowUnlinkConfirm(false);
 
-    if (!confirmed) {
-      return;
-    }
+    showToast("Portal account unlinked successfully.", "success");
 
-    setPortalError("");
-    setPortalSuccess("");
     setUnlinkingPortalUser(true);
 
     try {
@@ -246,14 +298,15 @@ function ClientDetailsPage() {
 
       await reloadClient();
 
-      setPortalSuccess("Portal account unlinked successfully.");
+      showToast("Portal account unlinked successfully.", "success");
     } catch (error) {
       console.error(error);
 
-      setPortalError(
+      showToast(
         error instanceof Error
           ? error.message
           : "Unable to unlink portal account.",
+        "error",
       );
     } finally {
       setUnlinkingPortalUser(false);
@@ -270,12 +323,10 @@ function ClientDetailsPage() {
     }
 
     if (!resetPassword.trim()) {
-      setPortalError("Please enter a new temporary password.");
+      showToast("Please enter a new temporary password.", "error");
       return;
     }
 
-    setPortalError("");
-    setPortalSuccess("");
     setResettingPassword(true);
 
     try {
@@ -287,10 +338,11 @@ function ClientDetailsPage() {
     } catch (error) {
       console.error(error);
 
-      setPortalError(
+      showToast(
         error instanceof Error
           ? error.message
           : "Unable to reset portal password.",
+        "error",
       );
     } finally {
       setResettingPassword(false);
@@ -304,6 +356,78 @@ function ClientDetailsPage() {
 
     const data = await getClientById(id);
     setClient(data);
+  }
+
+  async function handleNotificationToggle() {
+    if (!client) {
+      return;
+    }
+
+    setUpdatingNotifications(true);
+    //setNotificationMessage("");
+    setNotificationError("");
+
+    try {
+      const updatedClient = await updateClientNotifications(
+        client.id,
+        !client.notificationsEnabled,
+      );
+
+      setClient(updatedClient);
+    } catch (error) {
+      console.error(error);
+
+      setNotificationError(
+        error instanceof Error
+          ? error.message
+          : "Unable to update notification settings.",
+      );
+    } finally {
+      setUpdatingNotifications(false);
+    }
+  }
+
+  async function handlePortalUserSearch(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    const email = portalUserSearch.trim();
+
+    if (!email) {
+      showToast("Please enter an email address.", "error");
+      return;
+    }
+
+    setSearchingPortalUsers(true);
+
+    try {
+      const users = await searchPortalUsers(email);
+
+      setPortalUsers(users);
+    } catch (error) {
+      console.error(error);
+
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Unable to search portal users.",
+        "error",
+      );
+    } finally {
+      setSearchingPortalUsers(false);
+    }
+  }
+
+  function showToast(message: string, type: "success" | "error") {
+    setToast({
+      message,
+      type,
+    });
+
+    setTimeout(() => {
+      setToast(null);
+    }, 4000);
   }
 
   if (loading) {
@@ -484,6 +608,115 @@ function ClientDetailsPage() {
           </div>
         </div>
         <div className="mt-8">
+          <h2 className="mb-4 text-2xl font-bold text-gray-900">GoHighLevel</h2>
+
+          <div className="rounded-xl bg-white p-6 shadow">
+            {client.goHighLevelContactId ? (
+              <div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      GoHighLevel Contact Linked
+                    </h3>
+
+                    <p className="mt-1 text-sm text-gray-500">
+                      This client is connected to a GoHighLevel contact.
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
+                    Synced
+                  </span>
+                </div>
+
+                <div className="mt-5">
+                  <p className="text-sm text-gray-500">
+                    GoHighLevel Contact ID
+                  </p>
+
+                  <p className="font-medium text-gray-900">
+                    {client.goHighLevelContactId}
+                  </p>
+                </div>
+                <div className="mt-6 border-t border-gray-200 pt-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">
+                        Email & SMS Notifications
+                      </h3>
+
+                      <p className="mt-1 text-sm text-gray-500">
+                        Allow ClientFlow to send notifications to this client
+                        through GoHighLevel.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleNotificationToggle}
+                      disabled={updatingNotifications}
+                      aria-pressed={client.notificationsEnabled}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                        client.notificationsEnabled
+                          ? "bg-green-600"
+                          : "bg-gray-300"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          client.notificationsEnabled
+                            ? "translate-x-6"
+                            : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="mt-3">
+                    <span
+                      className={`rounded-full px-3 py-1 text-sm font-medium ${
+                        client.notificationsEnabled
+                          ? "bg-green-100 text-green-700"
+                          : "text-red-600 bg-red-100"
+                      }`}
+                    >
+                      {client.notificationsEnabled
+                        ? "Notifications Enabled"
+                        : "Notifications Disabled"}
+                    </span>
+                  </div>
+
+                  {notificationError && (
+                    <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                      {notificationError}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Not Connected to GoHighLevel
+                </h3>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Link this client to GoHighLevel to enable CRM, email, and SMS
+                  features.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setShowGhlConfirm(true)}
+                  disabled={syncingGhl}
+                  className="mt-5 rounded-lg bg-[#008619b9] px-4 py-2 font-medium text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {syncingGhl ? "Syncing..." : "Sync to GoHighLevel"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="mt-8">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900">Tax Cases</h2>
 
@@ -590,9 +823,9 @@ function ClientDetailsPage() {
 
               <button
                 type="button"
-                onClick={handleUnassignPortalUser}
+                onClick={() => setShowUnlinkConfirm(true)}
                 disabled={unlinkingPortalUser}
-                className="mt-5 rounded-lg bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 disabled:opacity-50"
+                className="ml-2 mt-5 rounded-lg bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 disabled:opacity-50"
               >
                 {unlinkingPortalUser ? "Unlinking..." : "Unlink Portal Account"}
               </button>
@@ -640,111 +873,121 @@ function ClientDetailsPage() {
                 </form>
               )}
             </div>
-          ) : (
-            <div className="space-y-6">
-              <form
-                onSubmit={handleCreatePortalAccount}
-                className="rounded-xl bg-white p-6 shadow"
-              >
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Create Portal Account
-                </h3>
+          ) : checkingPortalUser ? (
+            <div className="rounded-xl bg-white p-6 shadow">
+              <p className="text-sm text-gray-500">
+                Checking for an existing portal account...
+              </p>
+            </div>
+          ) : existingPortalUser ? (
+            <div className="rounded-xl bg-white p-6 shadow">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Existing Portal Account Found
+                  </h3>
 
-                <p className="mt-1 text-sm text-gray-500">
-                  Create a login account for this client.
-                </p>
-
-                <div className="mt-5 grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label
-                      htmlFor="portalEmail"
-                      className="mb-2 block text-sm font-medium text-gray-700"
-                    >
-                      Login Email
-                    </label>
-
-                    <input
-                      id="portalEmail"
-                      type="email"
-                      value={client.email}
-                      disabled
-                      className="w-full rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-gray-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="portalPassword"
-                      className="mb-2 block text-sm font-medium text-gray-700"
-                    >
-                      Temporary Password
-                    </label>
-
-                    <input
-                      id="portalPassword"
-                      type="password"
-                      value={portalPassword}
-                      onChange={(event) =>
-                        setPortalPassword(event.target.value)
-                      }
-                      placeholder="Enter temporary password"
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3"
-                    />
-                  </div>
+                  <p className="mt-1 text-sm text-gray-500">
+                    A portal account already exists with this client's email.
+                  </p>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={creatingPortalAccount}
-                  className="mt-4 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {creatingPortalAccount
-                    ? "Creating..."
-                    : "Create Portal Account"}
-                </button>
-              </form>
+                <span className="rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-700">
+                  Existing
+                </span>
+              </div>
 
-              <form
-                onSubmit={handleAssignPortalUser}
-                className="rounded-xl bg-white p-6 shadow"
-              >
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Assign Existing Portal User
-                </h3>
+              <div className="mt-5 rounded-lg bg-gray-50 p-4">
+                <p className="text-sm text-gray-500">Email</p>
 
-                <p className="mt-1 text-sm text-gray-500">
-                  Use this only if a Client-role user account already exists.
+                <p className="font-medium text-gray-900">
+                  {existingPortalUser.email}
                 </p>
 
-                <div className="mt-5">
-                  <label
-                    htmlFor="portalUserId"
-                    className="mb-2 block text-sm font-medium text-gray-700"
-                  >
-                    Portal User ID
-                  </label>
+                <p className="mt-3 text-sm text-gray-500">Portal User ID</p>
 
-                  <input
-                    id="portalUserId"
-                    type="text"
-                    value={portalUserId}
-                    onChange={(event) => setPortalUserId(event.target.value)}
-                    placeholder="Enter Client user GUID"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3"
-                  />
-                </div>
+                <p className="break-all text-sm text-gray-700">
+                  {existingPortalUser.id}
+                </p>
+              </div>
 
+              {existingPortalUser.isAssigned ? (
+                <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600">
+                  This portal account is already assigned to another client.
+                </p>
+              ) : (
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => handleAssignPortalUser(existingPortalUser)}
                   disabled={assigningPortalUser}
-                  className="mt-4 rounded-lg border border-blue-600 px-4 py-2 font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                  className="mt-5 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   {assigningPortalUser
                     ? "Assigning..."
-                    : "Assign Existing User"}
+                    : "Assign Existing Portal Account"}
                 </button>
-              </form>
+              )}
             </div>
+          ) : (
+            <form
+              onSubmit={handleCreatePortalAccount}
+              className="rounded-xl bg-white p-6 shadow"
+            >
+              <h3 className="text-lg font-semibold text-gray-900">
+                Create Portal Account
+              </h3>
+
+              <p className="mt-1 text-sm text-gray-500">
+                No existing portal account was found for this client.
+              </p>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="portalEmail"
+                    className="mb-2 block text-sm font-medium text-gray-700"
+                  >
+                    Login Email
+                  </label>
+
+                  <input
+                    id="portalEmail"
+                    type="email"
+                    value={client.email}
+                    disabled
+                    className="w-full rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-gray-600"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="portalPassword"
+                    className="mb-2 block text-sm font-medium text-gray-700"
+                  >
+                    Temporary Password
+                  </label>
+
+                  <input
+                    id="portalPassword"
+                    type="password"
+                    value={portalPassword}
+                    onChange={(event) => setPortalPassword(event.target.value)}
+                    placeholder="Enter temporary password"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={creatingPortalAccount}
+                className="mt-4 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {creatingPortalAccount
+                  ? "Creating..."
+                  : "Create Portal Account"}
+              </button>
+            </form>
           )}
         </div>
       </div>
@@ -776,29 +1019,143 @@ function ClientDetailsPage() {
         </div>
       )}
 
-      {showPortalErrorModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900">
-              Unable to Complete Action
-            </h3>
+      {showGhlConfirm && client && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Sync to GoHighLevel
+                </h3>
 
-            <p className="mt-3 text-sm text-gray-600">{portalError}</p>
+                <p className="mt-2 text-sm text-gray-500">
+                  This will add the client to your GoHighLevel account.
+                </p>
+              </div>
 
-            <div className="mt-6 flex justify-end">
               <button
                 type="button"
-                onClick={() => {
-                  setShowPortalErrorModal(false);
-                  setPortalError("");
-                }}
-                className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
+                onClick={() => setShowGhlConfirm(false)}
+                className="text-gray-400 hover:text-gray-600"
               >
-                OK
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-5 rounded-xl bg-gray-50 p-4">
+              <p className="text-sm text-gray-500">Client</p>
+
+              <p className="mt-1 font-semibold text-gray-900">
+                {client.firstName} {client.lastName}
+              </p>
+
+              <p className="mt-1 text-sm text-gray-600">{client.email}</p>
+            </div>
+
+            <p className="mt-4 text-sm text-gray-600">
+              After syncing, CRM, email, and SMS features can be enabled for
+              this client.
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowGhlConfirm(false)}
+                disabled={syncingGhl}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSyncToGoHighLevel}
+                disabled={syncingGhl}
+                className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {syncingGhl ? "Syncing..." : "Sync to GoHighLevel"}
               </button>
             </div>
           </div>
         </div>
+      )}
+      {showUnlinkConfirm && client && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Unlink Portal Account
+                </h3>
+
+                <p className="mt-2 text-sm text-gray-500">
+                  This will remove the portal account connection from this
+                  client.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowUnlinkConfirm(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-5 rounded-xl bg-red-50 p-4">
+              <p className="text-sm font-medium text-red-700">
+                {client.firstName} {client.lastName}
+              </p>
+
+              <p className="mt-1 text-sm text-red-600">{client.email}</p>
+            </div>
+
+            <p className="mt-4 text-sm text-gray-600">
+              The client will no longer be able to access this account through
+              the current client record until it is linked again.
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowUnlinkConfirm(false)}
+                disabled={unlinkingPortalUser}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleUnassignPortalUser}
+                disabled={unlinkingPortalUser}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {unlinkingPortalUser ? "Unlinking..." : "Unlink Portal Account"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmModal
+        open={showUnlinkConfirm}
+        title="Unlink Portal Account"
+        message="Are you sure you want to unlink this portal account?"
+        confirmText="Unlink Portal Account"
+        danger
+        loading={unlinkingPortalUser}
+        onCancel={() => setShowUnlinkConfirm(false)}
+        onConfirm={handleUnassignPortalUser}
+      />
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );

@@ -7,6 +7,8 @@ export type Client = {
   createdAt: string;
   userId: string;
   portalUserId: string | null;
+  goHighLevelContactId: string | null;
+  notificationsEnabled: boolean;
 };
 
 export type PagedClients = {
@@ -15,4 +17,13 @@ export type PagedClients = {
   pageSize: number;
   totalCount: number;
   totalPages: number;
+};
+
+export type GoHighLevelContact = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  isImported: boolean;
 };
