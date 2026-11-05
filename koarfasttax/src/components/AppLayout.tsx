@@ -236,7 +236,7 @@ function AppLayout() {
               <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gray-200">
                 {profile?.profileImageUrl ? (
                   <img
-                    src={`https://localhost:7058${profile.profileImageUrl}`}
+                    src={`${import.meta.env.VITE_API_URL}${profile.profileImageUrl}`}
                     alt="Profile"
                     className="h-full w-full object-cover"
                   />
