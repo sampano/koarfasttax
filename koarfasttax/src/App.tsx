@@ -13,6 +13,7 @@ import ClientDashboardPage from "./pages/ClientDashboardPage";
 import ClientTaxCaseDetailsPage from "./pages/ClientTaxCaseDetailsPage";
 import ProfilePage from "./pages/ProfilePage";
 import GlobalLoader from "./components/GlobalLoader";
+import AdminUsersPage from "./pages/AdminUsersPage";
 
 import "./App.css";
 
@@ -32,6 +33,7 @@ function App() {
         >
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/clients" element={<ClientsPage />} />
+          <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/clients/new" element={<AddClientPage />} />
           <Route path="/clients/:id" element={<ClientDetailsPage />} />
           <Route path="/tax-cases/:id" element={<TaxCaseDetailsPage />} />

@@ -128,6 +128,20 @@ function AppLayout() {
             <Users size={15} />
             <span>Clients</span>
           </NavLink>
+
+          <NavLink
+            to="/admin/users"
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-lg px-4 py-3 ${
+                isActive
+                  ? "bg-[rgba(0,0,0,0.08)] text-gray-900"
+                  : "ttext-gray-700 hover:bg-gray-100"
+              }`
+            }
+          >
+            <Users size={15} />
+            Admin Users
+          </NavLink>
         </nav>
         <button
           type="button"

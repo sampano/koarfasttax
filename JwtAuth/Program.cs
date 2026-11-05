@@ -71,6 +71,8 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 builder.Services.AddHttpClient<IGoHighLevelService, GoHighLevelService>();
 
+builder.Services.AddScoped<IAdminUserService, AdminUserService>();
+
 builder.Services.AddScoped<IClientNotificationService, ClientNotificationService>();
 
 builder.Services.AddScoped<IEmailService, EmailService>();

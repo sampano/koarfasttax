@@ -10,6 +10,7 @@
 
         public string Role { get; set; } = string.Empty;  // e.g. "Admin" or "Client"
 
+        public bool IsActive { get; set; } = true;
         public string FirstName { get; set; } = string.Empty;
 
         public string LastName { get; set; } = string.Empty;

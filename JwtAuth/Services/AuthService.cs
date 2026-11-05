@@ -17,19 +17,27 @@ namespace JwtAuth.Services
     {
         public async Task<TokenResponseDto?> LoginAsync(UserDto request)
         {
-            var user = await context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            var user = await context.Users
+                .FirstOrDefaultAsync(u => u.Email == request.Email);
+
             if (user is null)
             {
                 return null;
             }
-            if (new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, request.Password)
-                == PasswordVerificationResult.Failed)
+
+            if (!user.IsActive)
             {
                 return null;
             }
 
-            //return CreateToken(user);
-
+            if (new PasswordHasher<User>().VerifyHashedPassword(
+                    user,
+                    user.PasswordHash,
+                    request.Password)
+                == PasswordVerificationResult.Failed)
+            {
+                return null;
+            }
 
             return await CreateTokenRespose(user);
         }
@@ -77,10 +85,23 @@ namespace JwtAuth.Services
 
             return await CreateTokenRespose(user);
         }
-        private async Task<User?> ValidateRefreshTokenAsync(Guid userId, string refreshToken)
+        private async Task<User?> ValidateRefreshTokenAsync(
+     Guid userId,
+     string refreshToken)
         {
             var user = await context.Users.FindAsync(userId);
-            if (user is null || user.RefreshToken != refreshToken
+
+            if (user is null)
+            {
+                return null;
+            }
+
+            if (!user.IsActive)
+            {
+                return null;
+            }
+
+            if (user.RefreshToken != refreshToken
                 || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
             {
                 return null;
@@ -103,7 +124,7 @@ namespace JwtAuth.Services
         {
             var refreshToken = GenerateRefreshToken();
             user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7); // Set the expiry time for the refresh token
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // Set the expiry time for the refresh token
             await context.SaveChangesAsync();
             return refreshToken;
         }
@@ -125,7 +146,7 @@ namespace JwtAuth.Services
                issuer: configuration.GetValue<string>("AppSettings:Issuer"),
                audience: configuration.GetValue<string>("AppSettings:Audience"),
                  claims: claims,
-                 expires: DateTime.Now.AddDays(1),
+                 expires: DateTime.UtcNow.AddDays(1),
                  signingCredentials: creds);
 
             return new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
