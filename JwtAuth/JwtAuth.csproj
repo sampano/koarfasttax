@@ -4,13 +4,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-
 	  <InterceptorsNamespaces>
 		  $(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated
 	  </InterceptorsNamespaces>
-
-
-  <UserSecretsId>bbd23d64-e2aa-4a9f-9512-66c49a783d96</UserSecretsId>
+     <UserSecretsId>bbd23d64-e2aa-4a9f-9512-66c49a783d96</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
