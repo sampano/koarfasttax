@@ -47,7 +47,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["AppSettings:Audience"],
             ValidateLifetime = true,
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Appsettings:Key"]!)),
+                Encoding.UTF8.GetBytes(builder.Configuration["AppSettings:Key"]!
+                )),
             ValidateIssuerSigningKey = true,
         };
 
@@ -63,7 +64,6 @@ builder.Services.AddScoped<IProfileService, ProfileService>();
 
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 
-builder.Services.AddScoped<IDocumentRequestService, DocumentRequestService>();
 
 builder.Services.AddScoped<IDocumentRequestService, DocumentRequestService>();
 
@@ -90,7 +90,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 string uploadsPath = Path.Combine(
     builder.Environment.ContentRootPath,
