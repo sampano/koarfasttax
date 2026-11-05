@@ -77,7 +77,7 @@ namespace JwtAuth.Services
             string uploadsFolder = Path.Combine(
                 _environment.ContentRootPath,
                 "Uploads",
-                "Profiles"
+                "profiles"
             );
 
             Directory.CreateDirectory(uploadsFolder);
