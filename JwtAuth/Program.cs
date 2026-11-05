@@ -16,7 +16,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("ReactFrontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173", "https://api.koarfasttax.com")
+            .WithOrigins("http://localhost:5173", "https://portal.koarfasttax.com")
             .AllowAnyHeader()
             .AllowAnyMethod();
 
