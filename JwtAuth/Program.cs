@@ -112,13 +112,6 @@ app.MapControllers();
 
 app.MapGet("/", () => "Koar Fast Tax API is running.");
 
-
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.MapGet("/", () => "Koar Fast Tax API is running.");
-
 if (app.Environment.IsProduction())
 {
     try
