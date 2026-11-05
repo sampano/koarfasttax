@@ -16,9 +16,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("ReactFrontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173")
+            .WithOrigins("http://localhost:5173", "https://ludgfuid02kas1clv4tcrphc.sitepreview.xautimarketingai.com")
             .AllowAnyHeader()
             .AllowAnyMethod();
+
     });
 });
 
