@@ -109,4 +109,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+app.MapGet("/", () => "Koar Fast Tax API is running.");
+
 app.Run();
