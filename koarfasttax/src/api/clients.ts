@@ -347,5 +347,9 @@ export async function getPortalUserByClientEmail(
     throw new Error("Failed to check existing portal account.");
   }
 
+  if (response.status === 204) {
+    return null;
+  }
+
   return response.json();
 }
