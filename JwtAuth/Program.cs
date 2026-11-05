@@ -113,23 +113,33 @@ app.MapControllers();
 app.MapGet("/", () => "Koar Fast Tax API is running.");
 
 
-try
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.MapGet("/", () => "Koar Fast Tax API is running.");
+
+if (app.Environment.IsProduction())
 {
-    using var scope = app.Services.CreateScope();
+    try
+    {
+        using var scope = app.Services.CreateScope();
 
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    Console.WriteLine("Starting database migration...");
+        Console.WriteLine("Starting database migration...");
 
-    db.Database.Migrate();
+        db.Database.Migrate();
 
-    Console.WriteLine("Database migration completed successfully.");
+        Console.WriteLine("Database migration completed successfully.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("DATABASE MIGRATION FAILED:");
+        Console.WriteLine(ex.ToString());
+
+        throw;
+    }
 }
-catch (Exception ex)
-{
-    Console.WriteLine("DATABASE MIGRATION FAILED:");
-    Console.WriteLine(ex.ToString());
 
-    throw;
-}
 app.Run();
