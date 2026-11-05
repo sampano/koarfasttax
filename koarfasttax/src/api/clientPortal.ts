@@ -1,7 +1,6 @@
 import { apiFetch } from "./apiClient";
 import type { Client } from "../types/client";
 import type { TaxCase, TaxCaseSummary } from "../types/taxCase";
-import type { RecentDocument } from "../types/taxCase";
 import type { TaxDocument } from "../types/document";
 
 export async function getMyClientProfile(): Promise<Client> {

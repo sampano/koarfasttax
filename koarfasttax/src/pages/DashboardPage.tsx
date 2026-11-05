@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch } from "../api/apiClient";
 import TaxCaseStatusBadge from "../components/TaxCaseStatusBadge";
 import type { DashboardSummary } from "../types/dashboard";
 import { getDashboardSummary } from "../api/dashboard";
 
-type CaseAttention = {
+/*type CaseAttention = {
   taxCaseId: number;
   clientId: number;
   clientName: string;
@@ -26,20 +25,20 @@ type RecentActivity = {
 type TaxCaseStatusCount = {
   status: string;
   count: number;
-};
+};*/
 
 function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  function handleLogout() {
+  /*function handleLogout() {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("userId");
 
     navigate("/login");
-  }
+  }*/
 
   useEffect(() => {
     async function loadDashboard() {

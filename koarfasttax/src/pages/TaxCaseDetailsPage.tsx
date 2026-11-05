@@ -23,17 +23,9 @@ import {
 import ConfirmModal from "../components/ConfirmModal";
 import Toast from "../components/Toast";
 
-type RecentDocument = {
-  id: number;
-  fileName: string;
-  documentType: string | null;
-  documentCategory: string | null;
-  uploadedAt: string;
-};
-
-function formatStatus(status: string) {
+/*function formatStatus(status: string) {
   return status.replace(/([a-z])([A-Z])/g, "$1 $2");
-}
+}*/
 
 function TaxCaseDetailsPage() {
   // Get the tax case ID from the URL parameters
@@ -84,7 +76,7 @@ function TaxCaseDetailsPage() {
 
   // State for tax case details
   const [taxCase, setTaxCase] = useState<TaxCaseSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  //const [loading, setLoading] = useState(true);
 
   // State for editing tax case details
   const [editingTaxCase, setEditingTaxCase] = useState(false);
@@ -118,7 +110,7 @@ function TaxCaseDetailsPage() {
         "error",
       );
     } finally {
-      setLoading(false);
+      //setLoading(false);
     }
   }
 

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, LogOut, X, Menu, Bell } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
@@ -88,7 +88,7 @@ function AppLayout() {
         }`}
       >
         <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">KFT Fast Tax</h1>
+          <h1 className="text-2xl font-bold">Koar Fast Tax</h1>
 
           <button
             type="button"
@@ -166,7 +166,7 @@ function AppLayout() {
             </button>
 
             <span className="ml-4 font-semibold text-gray-900 md:ml-0">
-              KFT Fast Tax
+              Koar Fast Tax
             </span>
           </div>
 

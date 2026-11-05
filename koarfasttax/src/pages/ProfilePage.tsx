@@ -19,7 +19,7 @@ function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  //const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -69,7 +69,7 @@ function ProfilePage() {
     }
   }
 
-  async function handlePhotoUpload() {
+  /* function handlePhotoUpload() {
     if (!selectedPhoto) {
       setMessage("Please choose an image first.");
       return;
@@ -90,7 +90,7 @@ function ProfilePage() {
     } finally {
       setUploadingPhoto(false);
     }
-  }
+  }*/
 
   async function handlePhotoDelete() {
     try {
@@ -108,7 +108,7 @@ function ProfilePage() {
           : currentProfile,
       );
 
-      setSelectedPhoto(null);
+      //setSelectedPhoto(null);
       setMessage("Profile photo removed.");
     } catch (error) {
       console.error(error);

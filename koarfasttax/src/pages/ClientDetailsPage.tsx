@@ -13,7 +13,6 @@ import {
   resetPortalPassword,
   syncClientToGoHighLevel,
   updateClientNotifications,
-  searchPortalUsers,
   getPortalUserByClientEmail,
 } from "../api/clients";
 import { getTaxCasesByClient } from "../api/taxCases";
@@ -44,9 +43,9 @@ function ClientDetailsPage() {
   const [syncingGhl, setSyncingGhl] = useState(false);
 
   // State variables for managing portal user assignment
-  const [portalUserSearch, setPortalUserSearch] = useState("");
-  const [portalUsers, setPortalUsers] = useState<PortalUser[]>([]);
-  const [searchingPortalUsers, setSearchingPortalUsers] = useState(false);
+  //const [portalUserSearch, setPortalUserSearch] = useState("");
+  //const [portalUsers, setPortalUsers] = useState<PortalUser[]>([]);
+  //const [searchingPortalUsers, setSearchingPortalUsers] = useState(false);
 
   const [assigningPortalUser, setAssigningPortalUser] = useState(false);
 
@@ -195,8 +194,8 @@ function ClientDetailsPage() {
         "success",
       );
 
-      setPortalUsers([]);
-      setPortalUserSearch("");
+      //setPortalUsers([]);
+      //setPortalUserSearch("");
     } catch (error) {
       console.error(error);
 
@@ -387,7 +386,7 @@ function ClientDetailsPage() {
     }
   }
 
-  async function handlePortalUserSearch(
+  /*async function handlePortalUserSearch(
     event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
@@ -417,7 +416,7 @@ function ClientDetailsPage() {
     } finally {
       setSearchingPortalUsers(false);
     }
-  }
+  }*/
 
   function showToast(message: string, type: "success" | "error") {
     setToast({

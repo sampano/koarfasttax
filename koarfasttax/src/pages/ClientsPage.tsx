@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 //import { apiFetch } from "../api/apiClient";
 import { useNavigate } from "react-router-dom";
-import type { Client, GoHighLevelContact, PagedClients } from "../types/client";
+import type { Client, GoHighLevelContact } from "../types/client";
 import {
   getClients,
   getGoHighLevelContacts,

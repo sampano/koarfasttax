@@ -384,7 +384,7 @@ function ClientTaxCaseDetailsPage() {
 
                           <button
                             type="button"
-                            onClick={() => handleDeleteDocument(document.id)}
+                            onClick={() => setDocumentToDelete(document.id)}
                             className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
                           >
                             Delete

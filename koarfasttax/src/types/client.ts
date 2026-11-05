@@ -27,3 +27,9 @@ export type GoHighLevelContact = {
   phone: string | null;
   isImported: boolean;
 };
+
+export type PortalUser = {
+  id: string;
+  email: string;
+  isAssigned: boolean;
+};
