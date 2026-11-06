@@ -14,6 +14,8 @@ import ClientTaxCaseDetailsPage from "./pages/ClientTaxCaseDetailsPage";
 import ProfilePage from "./pages/ProfilePage";
 import GlobalLoader from "./components/GlobalLoader";
 import AdminUsersPage from "./pages/AdminUsersPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 import "./App.css";
 
@@ -23,6 +25,10 @@ function App() {
       <GlobalLoader />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         <Route
           element={

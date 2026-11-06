@@ -70,3 +70,48 @@ export async function login(
 
   return response.json();
 }
+
+export async function forgotPassword(email: string) {
+  const response = await fetch(
+    `${import.meta.env.VITE_API_URL}/api/Auth/forgot-password`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+    },
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Unable to process password reset.");
+  }
+
+  return data;
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  const response = await fetch(
+    `${import.meta.env.VITE_API_URL}/api/Auth/reset-password`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token,
+        newPassword,
+      }),
+    },
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Unable to reset password.");
+  }
+
+  return data;
+}
