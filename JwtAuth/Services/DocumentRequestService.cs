@@ -83,7 +83,7 @@ namespace JwtAuth.Services
 
                 <p>
                     A new document has been requested for your
-                    {taxCase.TaxYear} ClientFlow tax case.
+                    {taxCase.TaxYear} Koar Fast Tax tax case.
                 </p>
 
                 <p>
@@ -95,13 +95,13 @@ namespace JwtAuth.Services
                                 : $"<p><strong>Note:</strong> {request.Note}</p>")}
 
                 <p>
-                    Please log in to your ClientFlow client portal
+                    Please log in to your Koar Fast Tax client portal
                     to review the request and upload the document.
                 </p>
                 """;
 
                         string smsMessage =
-                            $"ClientFlow: {documentType.Name} was requested for your " +
+                            $"Koar Fast Tax: {documentType.Name} was requested for your " +
                             $"{taxCase.TaxYear} tax case. Please log in to your portal.";
 
                         await _clientNotificationService.SendAsync(

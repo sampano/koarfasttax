@@ -13,8 +13,16 @@ using System.Text;
 
 namespace JwtAuth.Services
 {
-    public class AuthService(AppDbContext context, IConfiguration configuration) : IAuthService
+    public class AuthService(AppDbContext context, IConfiguration configuration, IEmailService emailService) : IAuthService
     {
+        private static string HashResetToken(string token)
+        {
+            var tokenBytes = Encoding.UTF8.GetBytes(token);
+
+            var hashBytes = SHA256.HashData(tokenBytes);
+
+            return Convert.ToHexString(hashBytes);
+        }
         public async Task<TokenResponseDto?> LoginAsync(UserDto request)
         {
             var user = await context.Users
@@ -61,7 +69,7 @@ namespace JwtAuth.Services
 
             var user = new User
             {
-                Email = request.Email,
+                Email = request.Email.Trim().ToLower(),
                 Role = "Client"
             };
 
@@ -152,8 +160,90 @@ namespace JwtAuth.Services
             return new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
         }
 
-      
-        
+        public async Task<string?> CreatePasswordResetTokenAsync(string email)
+        {
+            var normalizedEmail = email.Trim().ToLower();
+
+            var user = await context.Users
+                .FirstOrDefaultAsync(u =>
+                    u.Email == normalizedEmail);
+
+            if (user is null)
+            {
+                return null;
+            }
+
+            var randomBytes =
+                RandomNumberGenerator.GetBytes(32);
+
+            var resetToken =
+                Convert.ToHexString(randomBytes);
+
+            user.PasswordResetToken =
+                HashResetToken(resetToken);
+
+            user.PasswordResetTokenExpiry =
+                DateTime.UtcNow.AddMinutes(30);
+
+            await context.SaveChangesAsync();
+
+            var client = await context.Clients
+            .FirstOrDefaultAsync(c => c.PortalUserId == user.Id);
+
+            if (client is null ||
+                string.IsNullOrWhiteSpace(client.GoHighLevelContactId))
+            {
+                return "GHL_NOT_CONNECTED";
+            }
+
+            var resetUrl =
+                $"https://portal.koarfasttax.com/reset-password?token={resetToken}";
+
+            await emailService.SendForgotPasswordAsync(
+                client.GoHighLevelContactId,
+                user.Email,
+                resetUrl
+            );
+
+            return resetToken;
+        }
+
+        public async Task<bool> ResetPasswordAsync(string token, string newPassword)
+        {
+            var hashedToken = HashResetToken(token);
+
+            var user = await context.Users
+                .FirstOrDefaultAsync(u =>
+                    u.PasswordResetToken == hashedToken
+                );
+
+            if (user is null)
+            {
+                return false;
+            }
+
+            if (user.PasswordResetTokenExpiry is null ||
+                user.PasswordResetTokenExpiry <= DateTime.UtcNow)
+            {
+                return false;
+            }
+
+            user.PasswordHash = new PasswordHasher<User>()
+                .HashPassword(user, newPassword);
+
+            // Make the token unusable after a successful reset.
+            user.PasswordResetToken = null;
+            user.PasswordResetTokenExpiry = null;
+
+            // Also invalidate existing refresh tokens.
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = null;
+
+            await context.SaveChangesAsync();
+
+            return true;
+        }
+
     }
 
     

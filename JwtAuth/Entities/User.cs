@@ -23,11 +23,17 @@
 
         public DateTime? RefreshTokenExpiryTime { get; set; }
 
+        public string? PasswordResetToken { get; set; }
+
+        public DateTime? PasswordResetTokenExpiry { get; set; }
+
         // Navigation property for the related clients
         public List<Client> Clients { get; set; } = [];
 
         public List<Document> Documents { get; set; } = [];
 
         public List<Notification> Notifications { get; set; } = [];
+
+       
     }
 }

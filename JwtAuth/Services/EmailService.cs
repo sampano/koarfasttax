@@ -15,13 +15,13 @@
             string email,
             string temporaryPassword)
         {
-            string subject = "Your ClientFlow Portal Account";
+            string subject = "Your Koar Fast Tax Portal Account";
 
             string html = $"""
                 <h2>Your portal account is ready</h2>
 
                 <p>
-                    Your ClientFlow client portal account has been created.
+                    Your Koar Fast Tax client portal account has been created.
                 </p>
 
                 <p>
@@ -47,13 +47,13 @@
             string temporaryPassword)
         {
             string subject =
-                "Your ClientFlow Password Reset Is Complete";
+                "Your Koar Fast Tax Password Reset Is Complete";
 
             string html = $"""
                 <h2>Your password reset is complete</h2>
 
                 <p>
-                    Your ClientFlow client portal password has been
+                    Your Koar Fast Tax client portal password has been
                     successfully reset.
                 </p>
 
@@ -89,7 +89,7 @@
 
                 <p>
                     A new document has been requested for your
-                    {taxYear} ClientFlow tax case.
+                    {taxYear} Koar Fast Tax tax case.
                 </p>
 
                 <p>
@@ -101,7 +101,7 @@
                     : $"<p><strong>Note:</strong> {note}</p>")}
 
                 <p>
-                    Please log in to your ClientFlow client portal
+                    Please log in to your Koar Fast Tax client portal
                     to review the request and upload the document.
                 </p>
                 """;
@@ -126,7 +126,7 @@
 
                 <p>
                     The status of your {taxYear}
-                    ClientFlow tax case has changed.
+                    Koar Fast Tax tax case has changed.
                 </p>
 
                 <p>
@@ -134,7 +134,7 @@
                 </p>
 
                 <p>
-                    Please log in to your ClientFlow client portal
+                    Please log in to your Koar Fast Tax client portal
                     to review your case.
                 </p>
                 """;
@@ -159,7 +159,7 @@
 
                 <p>
                     We successfully received your document for your
-                    {taxYear} ClientFlow tax case.
+                    {taxYear} Koar Fast Tax tax case.
                 </p>
 
                 <p>
@@ -191,7 +191,7 @@
 
                 <p>
                     We have received all requested documents for your
-                    {taxYear} ClientFlow tax case.
+                    {taxYear} Koar Fast Tax tax case.
                 </p>
 
                 <p>
@@ -200,7 +200,7 @@
                 </p>
 
                 <p>
-                    You can log in to your ClientFlow client portal
+                    You can log in to your Koar Fast Tax client portal
                     to check the current status of your tax case.
                 </p>
                 """;
@@ -236,7 +236,7 @@
                 </p>
 
                 <p>
-                    Log in to ClientFlow to review
+                    Log in to Koar Fast Tax to review
                     the uploaded document.
                 </p>
                 """;
@@ -246,6 +246,53 @@
                 subject,
                 html
             );
+        }
+
+        public async Task SendForgotPasswordAsync(
+            string contactId,
+            string email,
+            string resetUrl)
+            {
+                string subject =
+                    "Reset Your Koar Fast Tax Portal Password";
+
+                string html = $"""
+                <h2>Reset your password</h2>
+
+                <p>
+                    We received a request to reset the password
+                    for your Koar Fast Tax client portal account.
+                </p>
+
+                <p>
+                    <strong>Account:</strong> {email}
+                </p>
+
+                <p>
+                    Click the link below to create a new password:
+                </p>
+
+                <p>
+                    <a href="{resetUrl}">
+                        Reset My Password
+                    </a>
+                </p>
+
+                <p>
+                    This password reset link will expire in 30 minutes.
+                </p>
+
+                <p>
+                    If you did not request a password reset,
+                    you can safely ignore this email.
+                </p>
+                """;
+
+                await _goHighLevelService.SendEmailAsync(
+                    contactId,
+                    subject,
+                    html
+                );
         }
     }
 }

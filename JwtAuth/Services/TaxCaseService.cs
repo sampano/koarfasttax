@@ -185,7 +185,7 @@ namespace JwtAuth.Services
 
                 <p>
                     The status of your {taxCase.TaxYear}
-                    ClientFlow tax case has changed.
+                    Koar Fast Tax tax case has changed.
                 </p>
 
                 <p>
@@ -193,13 +193,13 @@ namespace JwtAuth.Services
                 </p>
 
                 <p>
-                    Please log in to your ClientFlow client portal
+                    Please log in to your Koar Fast Tax client portal
                     to review your case.
                 </p>
                 """;
 
                     string smsMessage =
-                        $"ClientFlow: Your {taxCase.TaxYear} tax case status is now {formattedStatus}.";
+                        $"Koar Fast Tax: Your {taxCase.TaxYear} tax case status is now {formattedStatus}.";
 
                     await _clientNotificationService.SendAsync(
                         taxCase.Client.GoHighLevelContactId,

@@ -16,7 +16,7 @@
 
         Task SendAdminDocumentUploadedAsync(string adminEmail, string clientName, int taxYear, string documentType, string fileName);
 
-
+        Task SendForgotPasswordAsync(string contactId, string email,string resetUrl);
 
     }
 }

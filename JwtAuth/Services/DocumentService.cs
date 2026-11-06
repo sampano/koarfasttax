@@ -406,7 +406,7 @@ namespace JwtAuth.Services
 
             <p>
                 We have received all requested documents for your
-                {taxCase.TaxYear} ClientFlow tax case.
+                {taxCase.TaxYear} Koar Fast Tax tax case.
             </p>
 
             <p>
@@ -414,13 +414,13 @@ namespace JwtAuth.Services
             </p>
 
             <p>
-                You can log in to your ClientFlow client portal
+                You can log in to your Koar Fast Tax client portal
                 to check the current status of your tax case.
             </p>
             """;
 
                     string smsMessage =
-                        $"ClientFlow: All requested documents for your " +
+                        $"Koar Fast Tax: All requested documents for your " +
                         $"{taxCase.TaxYear} tax case have been received.";
 
                     await _clientNotificationService.SendAsync(
@@ -477,7 +477,7 @@ namespace JwtAuth.Services
 
                     <p>
                         We successfully received your document for your
-                        {taxCase.TaxYear} ClientFlow tax case.
+                        {taxCase.TaxYear} Koar Fast Tax tax case.
                     </p>
 
                     <p>
@@ -491,7 +491,7 @@ namespace JwtAuth.Services
                     """;
 
                     string smsMessage =
-                        $"ClientFlow: We received your {documentType.Name} " +
+                        $"Koar Fast Tax: We received your {documentType.Name} " +
                         $"for your {taxCase.TaxYear} tax case.";
 
                     await _clientNotificationService.SendAsync(

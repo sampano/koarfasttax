@@ -614,7 +614,7 @@ namespace JwtAuth.Services
                 if (emailExists)
                 {
                     throw new InvalidOperationException(
-                        "A ClientFlow client with this email already exists."
+                        "A Koar Fast Tax client with this email already exists."
                     );
                 }
             }

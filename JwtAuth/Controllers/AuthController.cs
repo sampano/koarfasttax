@@ -1,4 +1,5 @@
-﻿using JwtAuth.Entities;
+﻿using JwtAuth.Dtos;
+using JwtAuth.Entities;
 using JwtAuth.Model;
 using JwtAuth.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -65,6 +66,67 @@ namespace JwtAuth.Controllers
         public IActionResult AdminOnlyEndpoint()
         {
             return Ok("You are an admin!");
+        }
+
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordDto request)
+        {
+            var result = await authService
+                .CreatePasswordResetTokenAsync(request.Email);
+
+            if (result == "GHL_NOT_CONNECTED")
+            {
+                return BadRequest(new
+                {
+                    message = "This account is not connected to GoHighLevel. Please contact support to reset your password."
+                });
+            }
+
+            return Ok(new
+            {
+                message = "If an account exists for that email, a password reset link has been sent."
+            });
+        }
+
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword(ResetPasswordDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Token) ||
+                string.IsNullOrWhiteSpace(request.NewPassword))
+            {
+                return BadRequest(new
+                {
+                    message = "Token and new password are required."
+                });
+            }
+
+            if (request.NewPassword.Length < 8)
+            {
+                return BadRequest(new
+                {
+                    message = "Password must be at least 8 characters."
+                });
+            }
+
+            var success = await authService.ResetPasswordAsync(
+                request.Token,
+                request.NewPassword
+            );
+
+            if (!success)
+            {
+                return BadRequest(new
+                {
+                    message = "The password reset link is invalid or has expired."
+                });
+            }
+
+            return Ok(new
+            {
+                message = "Password has been reset successfully."
+            });
         }
 
     }
