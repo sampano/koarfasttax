@@ -6,6 +6,14 @@ export type CaseAttention = {
   missingDocumentsCount: number;
 };
 
+export type CaseReview = {
+  taxCaseId: number;
+  clientId: number;
+  clientName: string;
+  taxYear: number;
+  uploadedDocumentsCount: number;
+};
+
 export type RecentActivity = {
   documentId: number;
   fileName: string;
@@ -26,11 +34,17 @@ export type DashboardSummary = {
   totalTaxCases: number;
   waitingForDocumentsCount: number;
   completedTaxCasesCount: number;
+
   totalRequestedDocuments: number;
   totalCompletedDocuments: number;
   totalMissingDocuments: number;
+  totalUploadedDocuments: number;
+
   overallDocumentProgressPercentage: number;
+
   casesNeedingAttention: CaseAttention[];
+  casesNeedingReview: CaseReview[];
+
   recentActivity: RecentActivity[];
   taxCaseStatusBreakdown: TaxCaseStatusCount[];
 };

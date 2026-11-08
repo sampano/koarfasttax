@@ -14,6 +14,8 @@
 
         public int TotalCompletedDocuments { get; set; }
 
+        public int TotalUploadedDocuments { get; set; }
+
         public int TotalMissingDocuments { get; set; }
 
         public double OverallDocumentProgressPercentage { get; set; }
@@ -23,5 +25,8 @@
         public List<RecentActivityDto> RecentActivity { get; set; } = [];
 
         public List<TaxCaseStatusCountDto> TaxCaseStatusBreakdown { get; set; } = [];
+
+        public List<CaseReviewDto> CasesNeedingReview { get; set; } = [];
     }
+
 }

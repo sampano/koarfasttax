@@ -42,6 +42,10 @@ namespace JwtAuth.Services
                 request.TaxCase.Client.UserId == userId &&
                 request.Status == DocumentRequestStatus.Pending);
 
+            int totalUploadedDocuments = await _context.DocumentRequests.CountAsync(request =>
+                request.TaxCase.Client.UserId == userId &&
+                request.Status == DocumentRequestStatus.Uploaded);
+
             double overallProgress =
                 totalRequestedDocuments == 0
                     ? 0
@@ -50,29 +54,67 @@ namespace JwtAuth.Services
                         totalRequestedDocuments * 100,
                         2);
 
-            List<CaseAttentionDto> casesNeedingAttention = await _context.TaxCases
-               .Where(taxCase =>
-                   taxCase.Client.UserId == userId &&
-                   //Only select tax cases where at least one document request is incomplete.
-                   taxCase.DocumentRequests.Any(
-                   request => request.Status == DocumentRequestStatus.Pending))
-               .Select(taxCase => new CaseAttentionDto
-               {
-                   TaxCaseId = taxCase.Id,
+            List<CaseAttentionDto> casesNeedingAttention =
+                await _context.DocumentRequests
+                    .Where(request =>
+                        request.TaxCase.Client.UserId == userId &&
+                        request.Status == DocumentRequestStatus.Pending)
+                    .GroupBy(request => new
+                    {
+                        request.TaxCaseId,
+                        request.TaxCase.ClientId,
+                        request.TaxCase.Client.FirstName,
+                        request.TaxCase.Client.LastName,
+                        request.TaxCase.TaxYear
+                    })
+                    .Select(group => new CaseAttentionDto
+                    {
+                        TaxCaseId = group.Key.TaxCaseId,
 
-                   ClientId = taxCase.ClientId,
+                        ClientId = group.Key.ClientId,
 
-                   ClientName = taxCase.Client.FirstName + " " + taxCase.Client.LastName,
+                        ClientName =
+                            group.Key.FirstName + " " + group.Key.LastName,
 
-                   TaxYear = taxCase.TaxYear,
+                        TaxYear = group.Key.TaxYear,
 
-                   MissingDocumentsCount = taxCase.DocumentRequests.Count(
-                        request => request.Status == DocumentRequestStatus.Pending)
-               })
-               .OrderByDescending(taxCase =>
-                   taxCase.MissingDocumentsCount)
-               .Take(5)
-               .ToListAsync();
+                        MissingDocumentsCount = group.Count()
+                    })
+                    .OrderByDescending(item =>
+                        item.MissingDocumentsCount)
+                    .Take(5)
+                    .ToListAsync();
+
+            List<CaseReviewDto> casesNeedingReview =
+                await _context.DocumentRequests
+                    .Where(request =>
+                        request.TaxCase.Client.UserId == userId &&
+                        request.Status == DocumentRequestStatus.Uploaded)
+                    .GroupBy(request => new
+                    {
+                        request.TaxCaseId,
+                        request.TaxCase.ClientId,
+                        request.TaxCase.Client.FirstName,
+                        request.TaxCase.Client.LastName,
+                        request.TaxCase.TaxYear
+                    })
+                    .Select(group => new CaseReviewDto
+                    {
+                        TaxCaseId = group.Key.TaxCaseId,
+
+                        ClientId = group.Key.ClientId,
+
+                        ClientName =
+                            group.Key.FirstName + " " + group.Key.LastName,
+
+                        TaxYear = group.Key.TaxYear,
+
+                        UploadedDocumentsCount = group.Count()
+                    })
+                    .OrderByDescending(item =>
+                        item.UploadedDocumentsCount)
+                    .Take(5)
+                    .ToListAsync();
 
             List<RecentActivityDto> recentActivity = await _context.Documents
             .Where(document =>
@@ -115,12 +157,16 @@ namespace JwtAuth.Services
                 TotalTaxCases = totalTaxCases,
                 WaitingForDocumentsCount = waitingForDocumentsCount,
                 CompletedTaxCasesCount = completedTaxCasesCount,
+
                 TotalRequestedDocuments = totalRequestedDocuments,
                 TotalCompletedDocuments = totalCompletedDocuments,
                 TotalMissingDocuments = totalMissingDocuments,
+                TotalUploadedDocuments = totalUploadedDocuments,
+
                 OverallDocumentProgressPercentage = overallProgress,
 
                 CasesNeedingAttention = casesNeedingAttention,
+                CasesNeedingReview = casesNeedingReview,
 
                 RecentActivity = recentActivity,
 

@@ -4,41 +4,10 @@ import TaxCaseStatusBadge from "../components/TaxCaseStatusBadge";
 import type { DashboardSummary } from "../types/dashboard";
 import { getDashboardSummary } from "../api/dashboard";
 
-/*type CaseAttention = {
-  taxCaseId: number;
-  clientId: number;
-  clientName: string;
-  taxYear: number;
-  missingDocumentsCount: number;
-};
-
-type RecentActivity = {
-  documentId: number;
-  fileName: string;
-  documentType: string | null;
-  clientName: string;
-  taxCaseId: number;
-  taxYear: number;
-  uploadedAt: string;
-};
-
-type TaxCaseStatusCount = {
-  status: string;
-  count: number;
-};*/
-
 function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null);
   const [error, setError] = useState("");
   const navigate = useNavigate();
-
-  /*function handleLogout() {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("userId");
-
-    navigate("/login");
-  }*/
 
   useEffect(() => {
     async function loadDashboard() {
@@ -86,7 +55,7 @@ function DashboardPage() {
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
       </div>
       {/* Summary cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl bg-white p-6 shadow">
           <p className="text-sm text-gray-500">Total Clients</p>
           <p className="mt-2 text-3xl font-bold">{dashboard.totalClients}</p>
@@ -103,6 +72,21 @@ function DashboardPage() {
             {dashboard.totalMissingDocuments}
           </p>
         </div>
+
+        <div className="rounded-xl bg-white p-6 shadow">
+          <p className="text-sm text-gray-500">Needs Review</p>
+          <p className="mt-2 text-3xl font-bold">
+            {dashboard.totalUploadedDocuments}
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-white p-6 shadow">
+          <p className="text-sm text-gray-500">Completed Documents</p>
+          <p className="mt-2 text-3xl font-bold">
+            {dashboard.totalCompletedDocuments}
+          </p>
+        </div>
+
         <div className="rounded-xl bg-white p-6 shadow">
           <p className="text-sm text-gray-500">Overall Progress</p>
           <p className="mt-2 text-3xl font-bold">
@@ -178,6 +162,60 @@ function DashboardPage() {
                     <td className="px-6 py-4">{item.taxYear}</td>
 
                     <td className="px-6 py-4">{item.missingDocumentsCount}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Documents Needing Review */}
+      <div className="mt-8">
+        <h2 className="mb-4 text-xl font-bold text-gray-900">
+          Documents Needing Review
+        </h2>
+
+        <div className="overflow-hidden rounded-xl bg-white shadow">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
+                  Client
+                </th>
+
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
+                  Tax Year
+                </th>
+
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-600">
+                  Needs Review
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {(dashboard.casesNeedingReview?.length ?? 0) === 0 ? (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="px-6 py-8 text-center text-sm text-gray-500"
+                  >
+                    No uploaded documents are waiting for review.
+                  </td>
+                </tr>
+              ) : (
+                dashboard.casesNeedingReview?.map((item) => (
+                  <tr
+                    key={item.taxCaseId}
+                    onClick={() => navigate(`/tax-cases/${item.taxCaseId}`)}
+                    className="cursor-pointer border-t border-gray-200 hover:bg-gray-50"
+                  >
+                    <td className="px-6 py-4">{item.clientName}</td>
+
+                    <td className="px-6 py-4">{item.taxYear}</td>
+
+                    <td className="px-6 py-4">{item.uploadedDocumentsCount}</td>
                   </tr>
                 ))
               )}
