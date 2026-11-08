@@ -110,5 +110,35 @@ namespace JwtAuth.Controllers
 
             return Ok(documentRequest);
         }
+
+        [HttpPatch("{documentRequestId}/complete")]
+        public async Task<ActionResult<DocumentRequestDto>>
+    CompleteDocumentRequest(int documentRequestId)
+        {
+            Guid userId = GetCurrentUserId();
+
+            try
+            {
+                DocumentRequestDto? documentRequest =
+                    await _documentRequestService
+                        .CompleteDocumentRequestAsync(
+                            documentRequestId,
+                            userId);
+
+                if (documentRequest is null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(documentRequest);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+        }
     }
 }

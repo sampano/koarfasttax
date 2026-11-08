@@ -14,10 +14,12 @@
 
         public string? Note { get; set; }
 
-        public bool IsCompleted { get; set; } = false;
+        public DocumentRequestStatus Status { get; set; }
+            = DocumentRequestStatus.Pending;
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; }
+            = DateTime.UtcNow;
 
-        
+
     }
 }

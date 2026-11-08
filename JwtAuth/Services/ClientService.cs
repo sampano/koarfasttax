@@ -322,22 +322,31 @@ namespace JwtAuth.Services
                     Status = taxCase.Status,
                     CreatedAt = taxCase.CreatedAt,
                     ClientId = taxCase.ClientId,
+
                     RequestedDocumentsCount =
                         taxCase.DocumentRequests.Count,
+
                     CompletedDocumentsCount =
-                        taxCase.DocumentRequests.Count(request => request.IsCompleted),
+                        taxCase.DocumentRequests.Count(request =>
+                            request.Status == DocumentRequestStatus.Completed),
+
                     MissingDocumentsCount =
-                        taxCase.DocumentRequests.Count(request => !request.IsCompleted),
+                        taxCase.DocumentRequests.Count(request =>
+                            request.Status == DocumentRequestStatus.Pending),
+
                     DocumentProgressPercentage =
                         taxCase.DocumentRequests.Count == 0
                             ? 0
-                            : (double)taxCase.DocumentRequests.Count(request => request.IsCompleted)
+                            : (double)taxCase.DocumentRequests.Count(request =>
+                                request.Status == DocumentRequestStatus.Completed)
                               / taxCase.DocumentRequests.Count * 100
                 })
                 .ToListAsync();
         }
 
-        public async Task<TaxCaseSummaryDto?> GetPortalTaxCaseSummaryAsync(int taxCaseId, Guid portalUserId)
+        public async Task<TaxCaseSummaryDto?> GetPortalTaxCaseSummaryAsync(
+    int taxCaseId,
+    Guid portalUserId)
         {
             Client? client = await _context.Clients
                 .FirstOrDefaultAsync(client =>
@@ -364,9 +373,16 @@ namespace JwtAuth.Services
                 return null;
             }
 
-            int requestedCount = taxCase.DocumentRequests.Count;
-            int completedCount = taxCase.DocumentRequests.Count(request => request.IsCompleted);
-            int missingCount = taxCase.DocumentRequests.Count(request => !request.IsCompleted);
+            int requestedCount =
+                taxCase.DocumentRequests.Count;
+
+            int completedCount =
+                taxCase.DocumentRequests.Count(request =>
+                    request.Status == DocumentRequestStatus.Completed);
+
+            int missingCount =
+                taxCase.DocumentRequests.Count(request =>
+                    request.Status == DocumentRequestStatus.Pending);
 
             double progress =
                 requestedCount == 0
@@ -379,20 +395,41 @@ namespace JwtAuth.Services
                 ClientId = taxCase.ClientId,
                 TaxYear = taxCase.TaxYear,
                 Status = taxCase.Status,
+
                 RequestedDocumentsCount = requestedCount,
                 CompletedDocumentsCount = completedCount,
                 MissingDocumentsCount = missingCount,
                 DocumentProgressPercentage = progress,
 
-                MissingDocuments = taxCase.DocumentRequests
-                    .Where(request => !request.IsCompleted)
+                DocumentRequests = taxCase.DocumentRequests
+                    .OrderBy(request =>
+                        request.DocumentType.DocumentCategory.Name)
+                    .ThenBy(request =>
+                        request.DocumentType.Name)
                     .Select(request => new DocumentRequestSummaryDto
                     {
                         Id = request.Id,
                         DocumentTypeId = request.DocumentTypeId,
                         DocumentType = request.DocumentType.Name,
-                        DocumentCategory = request.DocumentType.DocumentCategory.Name,
-                        Note = request.Note
+                        DocumentCategory =
+                            request.DocumentType.DocumentCategory.Name,
+                        Note = request.Note,
+                        Status = request.Status
+                    })
+                    .ToList(),
+
+                MissingDocuments = taxCase.DocumentRequests
+                    .Where(request =>
+                        request.Status == DocumentRequestStatus.Pending)
+                    .Select(request => new DocumentRequestSummaryDto
+                    {
+                        Id = request.Id,
+                        DocumentTypeId = request.DocumentTypeId,
+                        DocumentType = request.DocumentType.Name,
+                        DocumentCategory =
+                            request.DocumentType.DocumentCategory.Name,
+                        Note = request.Note,
+                        Status = request.Status
                     })
                     .ToList(),
 
@@ -403,12 +440,17 @@ namespace JwtAuth.Services
                     {
                         Id = document.Id,
                         FileName = document.FileName,
-                        DocumentType = document.DocumentType != null
-                            ? document.DocumentType.Name
-                            : null,
-                        DocumentCategory = document.DocumentType != null
-                            ? document.DocumentType.DocumentCategory.Name
-                            : null,
+
+                        DocumentType =
+                            document.DocumentType != null
+                                ? document.DocumentType.Name
+                                : null,
+
+                        DocumentCategory =
+                            document.DocumentType != null
+                                ? document.DocumentType.DocumentCategory.Name
+                                : null,
+
                         UploadedAt = document.UploadedAt
                     })
                     .ToList()

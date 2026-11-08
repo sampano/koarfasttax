@@ -11,5 +11,7 @@ namespace JwtAuth.Services
         Task<bool> DeleteDocumentRequestAsync(int documentRequestId, Guid userId);
 
         Task<DocumentRequestDto?> UpdateDocumentRequestAsync(int documentRequestId, UpdateDocumentRequestDto request,Guid userId);
+
+        Task<DocumentRequestDto?> CompleteDocumentRequestAsync(int documentRequestId, Guid userId);
     }
 }

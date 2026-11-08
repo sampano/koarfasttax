@@ -1,4 +1,6 @@
-﻿namespace JwtAuth.Dtos.DocumentRequests
+﻿using JwtAuth.Entities;
+
+namespace JwtAuth.Dtos.DocumentRequests
 {
     public class DocumentRequestDto
     {
@@ -14,8 +16,10 @@
 
         public string? Note { get; set; }
 
-        public bool IsCompleted { get; set; }
+        public DocumentRequestStatus Status { get; set; }
+           = DocumentRequestStatus.Pending;
 
         public DateTime CreatedAt { get; set; }
+            = DateTime.UtcNow;
     }
 }

@@ -15,6 +15,30 @@ import type { TaxDocument } from "../types/document";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
 
+function getDocumentRequestStatus(
+  status: "Pending" | "Uploaded" | "Completed",
+) {
+  switch (status) {
+    case "Uploaded":
+      return {
+        label: "Uploaded - Waiting for Review",
+        className: "bg-amber-50 text-amber-700",
+      };
+
+    case "Completed":
+      return {
+        label: "Completed",
+        className: "bg-green-50 text-green-700",
+      };
+
+    default:
+      return {
+        label: "Pending",
+        className: "bg-red-50 text-red-700",
+      };
+  }
+}
+
 function ClientTaxCaseDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -223,35 +247,49 @@ function ClientTaxCaseDetailsPage() {
 
         <div className="mt-8">
           <h2 className="mb-4 text-2xl font-bold text-gray-900">
-            Missing Documents
+            Required Documents
           </h2>
 
-          {taxCase.missingDocuments.length === 0 ? (
+          {taxCase.documentRequests.length === 0 ? (
             <div className="rounded-xl bg-white p-6 shadow">
-              <p className="text-gray-500">No missing documents.</p>
+              <p className="text-gray-500">No documents have been requested.</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {taxCase.missingDocuments.map((document) => (
-                <div
-                  key={document.id}
-                  className="rounded-xl bg-white p-5 shadow"
-                >
-                  <p className="font-semibold text-gray-900">
-                    {document.documentType}
-                  </p>
+              {taxCase.documentRequests.map((document) => {
+                const status = getDocumentRequestStatus(document.status);
 
-                  <p className="text-sm text-gray-500">
-                    {document.documentCategory}
-                  </p>
+                return (
+                  <div
+                    key={document.id}
+                    className="rounded-xl bg-white p-5 shadow"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          {document.documentType}
+                        </p>
 
-                  {document.note && (
-                    <p className="mt-3 text-sm text-gray-700">
-                      {document.note}
-                    </p>
-                  )}
-                </div>
-              ))}
+                        <p className="mt-1 text-sm text-gray-500">
+                          {document.documentCategory}
+                        </p>
+
+                        {document.note && (
+                          <p className="mt-3 text-sm text-gray-700">
+                            {document.note}
+                          </p>
+                        )}
+                      </div>
+
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}
+                      >
+                        {status.label}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

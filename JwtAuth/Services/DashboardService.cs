@@ -35,12 +35,12 @@ namespace JwtAuth.Services
                     request.TaxCase.Client.UserId == userId);
 
             int totalCompletedDocuments = await _context.DocumentRequests.CountAsync(request =>
-                    request.TaxCase.Client.UserId == userId &&
-                    request.IsCompleted);
+                request.TaxCase.Client.UserId == userId &&
+                request.Status == DocumentRequestStatus.Completed);
 
             int totalMissingDocuments = await _context.DocumentRequests.CountAsync(request =>
-                    request.TaxCase.Client.UserId == userId &&
-                    !request.IsCompleted);
+                request.TaxCase.Client.UserId == userId &&
+                request.Status == DocumentRequestStatus.Pending);
 
             double overallProgress =
                 totalRequestedDocuments == 0
@@ -55,7 +55,7 @@ namespace JwtAuth.Services
                    taxCase.Client.UserId == userId &&
                    //Only select tax cases where at least one document request is incomplete.
                    taxCase.DocumentRequests.Any(
-                   request => !request.IsCompleted))
+                   request => request.Status == DocumentRequestStatus.Pending))
                .Select(taxCase => new CaseAttentionDto
                {
                    TaxCaseId = taxCase.Id,
@@ -67,7 +67,7 @@ namespace JwtAuth.Services
                    TaxYear = taxCase.TaxYear,
 
                    MissingDocumentsCount = taxCase.DocumentRequests.Count(
-                           request => !request.IsCompleted)
+                        request => request.Status == DocumentRequestStatus.Pending)
                })
                .OrderByDescending(taxCase =>
                    taxCase.MissingDocumentsCount)

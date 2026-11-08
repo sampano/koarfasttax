@@ -62,7 +62,7 @@ namespace JwtAuth.Services
                 TaxCaseId = taxCaseId,
                 DocumentTypeId = request.DocumentTypeId,
                 Note = request.Note,
-                IsCompleted = false,
+                Status = DocumentRequestStatus.Pending,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -130,7 +130,7 @@ namespace JwtAuth.Services
                 Note = documentRequest.Note,
                 DocumentType = documentType.Name,
                 DocumentCategory = documentType.DocumentCategory.Name,
-                IsCompleted = documentRequest.IsCompleted,
+                Status = documentRequest.Status,
                 CreatedAt = documentRequest.CreatedAt
             };
         }
@@ -154,7 +154,7 @@ namespace JwtAuth.Services
                         DocumentType = documentRequest.DocumentType.Name,
                         DocumentCategory = documentRequest.DocumentType.DocumentCategory.Name,
                         Note = documentRequest.Note,
-                        IsCompleted = documentRequest.IsCompleted,
+                        Status = documentRequest.Status,
                         CreatedAt = documentRequest.CreatedAt
                     })
                 .ToListAsync();
@@ -205,7 +205,48 @@ namespace JwtAuth.Services
                 DocumentType = documentRequest.DocumentType.Name,
                 DocumentCategory = documentRequest.DocumentType.DocumentCategory.Name,
                 Note = documentRequest.Note,
-                IsCompleted = documentRequest.IsCompleted,
+                Status = documentRequest.Status,
+                CreatedAt = documentRequest.CreatedAt
+            };
+        }
+
+        public async Task<DocumentRequestDto?> CompleteDocumentRequestAsync(
+    int documentRequestId,
+    Guid userId)
+        {
+            DocumentRequest? documentRequest =
+                await _context.DocumentRequests
+                    .Include(request => request.DocumentType)
+                        .ThenInclude(type => type.DocumentCategory)
+                    .FirstOrDefaultAsync(request =>
+                        request.Id == documentRequestId &&
+                        request.TaxCase.Client.UserId == userId);
+
+            if (documentRequest is null)
+            {
+                return null;
+            }
+
+            if (documentRequest.Status != DocumentRequestStatus.Uploaded)
+            {
+                throw new InvalidOperationException(
+                    "Only uploaded document requests can be marked as completed.");
+            }
+
+            documentRequest.Status = DocumentRequestStatus.Completed;
+
+            await _context.SaveChangesAsync();
+
+            return new DocumentRequestDto
+            {
+                Id = documentRequest.Id,
+                TaxCaseId = documentRequest.TaxCaseId,
+                DocumentTypeId = documentRequest.DocumentTypeId,
+                DocumentType = documentRequest.DocumentType.Name,
+                DocumentCategory =
+                    documentRequest.DocumentType.DocumentCategory.Name,
+                Note = documentRequest.Note,
+                Status = documentRequest.Status,
                 CreatedAt = documentRequest.CreatedAt
             };
         }

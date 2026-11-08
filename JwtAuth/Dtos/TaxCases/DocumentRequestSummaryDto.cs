@@ -1,4 +1,6 @@
-﻿namespace JwtAuth.Dtos.TaxCases
+﻿using JwtAuth.Entities;
+
+namespace JwtAuth.Dtos.TaxCases
 {
     public class DocumentRequestSummaryDto
     {
@@ -11,5 +13,7 @@
         public string DocumentCategory { get; set; } = string.Empty;
 
         public string? Note { get; set; }
+
+        public DocumentRequestStatus Status { get; set; }
     }
 }

@@ -1,10 +1,4 @@
-export type MissingDocument = {
-  id: number;
-  documentTypeId: number;
-  documentType: string;
-  documentCategory: string;
-  note: string | null;
-};
+import type { DocumentRequestSummary } from "./documentRequest";
 
 export type RecentDocument = {
   id: number;
@@ -19,11 +13,15 @@ export type TaxCaseSummary = {
   clientId: number;
   taxYear: number;
   status: string;
+
   requestedDocumentsCount: number;
   completedDocumentsCount: number;
   missingDocumentsCount: number;
   documentProgressPercentage: number;
-  missingDocuments: MissingDocument[];
+
+  missingDocuments: DocumentRequestSummary[];
+  documentRequests: DocumentRequestSummary[];
+
   recentDocuments: RecentDocument[];
 };
 

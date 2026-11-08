@@ -114,9 +114,9 @@ namespace JwtAuth.Services
 
                 if (documentRequest is not null)
                 {
-                    documentRequest.IsCompleted = true;
+                documentRequest.Status = DocumentRequestStatus.Uploaded;
 
-                    await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
                 }
 
                 DocumentType? documentType = await _context.DocumentTypes
@@ -249,7 +249,7 @@ namespace JwtAuth.Services
 
                     if (documentRequest is not null)
                     {
-                        documentRequest.IsCompleted = false;
+                        documentRequest.Status = DocumentRequestStatus.Pending;
 
                         await _context.SaveChangesAsync();
                     }
@@ -377,7 +377,7 @@ namespace JwtAuth.Services
 
             if (documentRequest is not null)
             {
-                documentRequest.IsCompleted = true;
+                documentRequest.Status = DocumentRequestStatus.Uploaded;
 
                 await _context.SaveChangesAsync();
             }
@@ -387,7 +387,7 @@ namespace JwtAuth.Services
 
             bool hasIncompleteRequests = await _context.DocumentRequests.AnyAsync(request =>
                     request.TaxCaseId == taxCaseId &&
-                    !request.IsCompleted);
+                    request.Status != DocumentRequestStatus.Completed);
 
             if (hasDocumentRequests && !hasIncompleteRequests)
             {
@@ -651,7 +651,7 @@ namespace JwtAuth.Services
 
                     if (documentRequest is not null)
                     {
-                        documentRequest.IsCompleted = false;
+                        documentRequest.Status = DocumentRequestStatus.Pending;
 
                         await _context.SaveChangesAsync();
                     }

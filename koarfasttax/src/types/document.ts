@@ -20,3 +20,14 @@ export type TaxDocument = {
   documentType: string | null;
   documentCategory: string | null;
 };
+
+export type DocumentRequest = {
+  id: number;
+  taxCaseId: number;
+  documentTypeId: number;
+  documentType: string;
+  documentCategory: string;
+  note: string | null;
+  status: number;
+  createdAt: string;
+};

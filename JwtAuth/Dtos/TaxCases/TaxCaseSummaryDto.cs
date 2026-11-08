@@ -23,5 +23,7 @@ namespace JwtAuth.Dtos.TaxCases
         public List<DocumentRequestSummaryDto> MissingDocuments { get; set; } = [];
 
         public List<RecentDocumentDto> RecentDocuments { get; set; } = [];
+
+        public List<DocumentRequestSummaryDto> DocumentRequests { get; set; } = [];
     }
 }

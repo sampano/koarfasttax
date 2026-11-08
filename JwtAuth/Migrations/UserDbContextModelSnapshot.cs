@@ -180,11 +180,11 @@ namespace JwtAuth.Migrations
                     b.Property<int>("DocumentTypeId")
                         .HasColumnType("int");
 
-                    b.Property<bool>("IsCompleted")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Note")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<int>("TaxCaseId")
                         .HasColumnType("int");

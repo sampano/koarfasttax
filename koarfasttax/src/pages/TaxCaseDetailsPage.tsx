@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import TaxCaseStatusBadge from "../components/TaxCaseStatusBadge";
 import type { TaxCaseSummary } from "../types/taxCase";
 import type { DocumentCategory } from "../types/document";
+import type { DocumentRequest } from "../types/documentRequest";
 import {
   getTaxCaseSummary,
   updateTaxCase,
@@ -19,6 +20,8 @@ import {
   createDocumentRequest,
   updateDocumentRequestNote,
   deleteDocumentRequest,
+  completeDocumentRequest,
+  getDocumentRequests,
 } from "../api/documentRequests";
 import ConfirmModal from "../components/ConfirmModal";
 import Toast from "../components/Toast";
@@ -27,6 +30,29 @@ import Toast from "../components/Toast";
   return status.replace(/([a-z])([A-Z])/g, "$1 $2");
 }*/
 
+function getDocumentRequestStatus(
+  status: "Pending" | "Uploaded" | "Completed",
+) {
+  switch (status) {
+    case "Uploaded":
+      return {
+        label: "Uploaded",
+        className: "bg-amber-50 text-amber-700",
+      };
+
+    case "Completed":
+      return {
+        label: "Completed",
+        className: "bg-green-50 text-green-700",
+      };
+
+    default:
+      return {
+        label: "Pending",
+        className: "bg-red-50 text-red-700",
+      };
+  }
+}
 function TaxCaseDetailsPage() {
   // Get the tax case ID from the URL parameters
   const { id } = useParams();
@@ -53,6 +79,14 @@ function TaxCaseDetailsPage() {
   const [showDeleteTaxCaseConfirm, setShowDeleteTaxCaseConfirm] =
     useState(false);
   const [deletingTaxCase, setDeletingTaxCase] = useState(false);
+
+  // State for document requests
+  const [documentRequests, setDocumentRequests] = useState<DocumentRequest[]>(
+    [],
+  );
+  const [completingRequestId, setCompletingRequestId] = useState<number | null>(
+    null,
+  );
 
   // State variables for managing notification settings
   const [toast, setToast] = useState<{
@@ -117,6 +151,7 @@ function TaxCaseDetailsPage() {
   useEffect(() => {
     loadTaxCase();
     loadDocumentCategories();
+    loadDocumentRequests();
   }, [id]);
 
   // Function for uploading documents
@@ -134,7 +169,7 @@ function TaxCaseDetailsPage() {
     try {
       await uploadTaxDocument(taxCase.id, selectedFile, selectedDocumentTypeId);
 
-      await loadTaxCase();
+      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
 
       setSelectedDocumentTypeId("");
       setSelectedFile(null);
@@ -189,7 +224,7 @@ function TaxCaseDetailsPage() {
     try {
       await deleteTaxDocument(documentToDelete);
 
-      await loadTaxCase();
+      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
 
       setDocumentToDelete(null);
 
@@ -230,7 +265,7 @@ function TaxCaseDetailsPage() {
       setRequestDocumentTypeId("");
       setRequestNote("");
 
-      await loadTaxCase();
+      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
     } catch (error) {
       console.error(error);
 
@@ -253,7 +288,7 @@ function TaxCaseDetailsPage() {
       setEditingRequestId(null);
       setEditingNote("");
 
-      await loadTaxCase();
+      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
     } catch (error) {
       console.error(error);
       setRequestActionError("Unable to update note.");
@@ -271,7 +306,7 @@ function TaxCaseDetailsPage() {
     try {
       await deleteDocumentRequest(documentRequestToDelete);
 
-      await loadTaxCase();
+      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
 
       setDocumentRequestToDelete(null);
 
@@ -318,7 +353,7 @@ function TaxCaseDetailsPage() {
 
       setEditingTaxCase(false);
 
-      await loadTaxCase();
+      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
     } catch (error) {
       console.error(error);
 
@@ -327,6 +362,51 @@ function TaxCaseDetailsPage() {
       );
     } finally {
       setSavingTaxCase(false);
+    }
+  }
+
+  async function loadDocumentRequests() {
+    if (!id) {
+      return;
+    }
+
+    try {
+      const data = await getDocumentRequests(id);
+
+      setDocumentRequests(data);
+    } catch (error) {
+      console.error(error);
+
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Unable to load document requests.",
+        "error",
+      );
+    }
+  }
+
+  // Function to mark a document request as completed
+  async function handleCompleteDocumentRequest(documentRequestId: number) {
+    setCompletingRequestId(documentRequestId);
+
+    try {
+      await completeDocumentRequest(documentRequestId);
+
+      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
+
+      showToast("Document request marked as completed.", "success");
+    } catch (error) {
+      console.error(error);
+
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Unable to complete document request.",
+        "error",
+      );
+    } finally {
+      setCompletingRequestId(null);
     }
   }
 
@@ -602,6 +682,71 @@ function TaxCaseDetailsPage() {
               {requestSubmitting ? "Adding..." : "Add Required Document"}
             </button>
           </form>
+        </div>
+        <div className="mt-8">
+          <h2 className="mb-4 text-2xl font-bold text-gray-900">
+            Required Documents
+          </h2>
+
+          {documentRequests.length === 0 ? (
+            <div className="rounded-xl bg-white p-6 shadow">
+              <p className="text-gray-500">No documents have been requested.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {documentRequests.map((request) => {
+                const status = getDocumentRequestStatus(request.status);
+
+                return (
+                  <div
+                    key={request.id}
+                    className="rounded-xl bg-white p-5 shadow"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <p className="font-semibold text-gray-900">
+                            {request.documentType}
+                          </p>
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}
+                          >
+                            {status.label}
+                          </span>
+                        </div>
+
+                        <p className="mt-1 text-sm text-gray-500">
+                          {request.documentCategory}
+                        </p>
+
+                        {request.note && (
+                          <p className="mt-3 text-sm text-gray-700">
+                            {request.note}
+                          </p>
+                        )}
+                      </div>
+
+                      {request.status === "Uploaded" && (
+                        <button
+                          type="button"
+                          disabled={completingRequestId === request.id}
+                          onClick={() =>
+                            handleCompleteDocumentRequest(request.id)
+                          }
+                          className="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {completingRequestId === request.id
+                            ? "Completing..."
+                            : "Mark as Completed"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div className="mt-8">
           <h2 className="mb-4 text-2xl font-bold text-gray-900">
