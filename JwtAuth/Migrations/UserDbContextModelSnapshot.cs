@@ -357,6 +357,39 @@ namespace JwtAuth.Migrations
                     b.ToTable("TaxCases");
                 });
 
+            modelBuilder.Entity("JwtAuth.Entities.TaxCaseActivity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TaxCaseId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaxCaseId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TaxCaseActivities");
+                });
+
             modelBuilder.Entity("JwtAuth.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -504,6 +537,25 @@ namespace JwtAuth.Migrations
                     b.Navigation("Client");
                 });
 
+            modelBuilder.Entity("JwtAuth.Entities.TaxCaseActivity", b =>
+                {
+                    b.HasOne("JwtAuth.Entities.TaxCase", "TaxCase")
+                        .WithMany("Activities")
+                        .HasForeignKey("TaxCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("JwtAuth.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("TaxCase");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("JwtAuth.Entities.Client", b =>
                 {
                     b.Navigation("TaxCases");
@@ -523,6 +575,8 @@ namespace JwtAuth.Migrations
 
             modelBuilder.Entity("JwtAuth.Entities.TaxCase", b =>
                 {
+                    b.Navigation("Activities");
+
                     b.Navigation("DocumentRequests");
 
                     b.Navigation("Documents");

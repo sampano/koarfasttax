@@ -14,16 +14,19 @@ namespace JwtAuth.Services
         private readonly IClientNotificationService _clientNotificationService;
         private readonly INotificationService _notificationService;
 
+        private readonly ITaxCaseActivityService _taxCaseActivityService;
         public DocumentService(
        AppDbContext context,
        IWebHostEnvironment environment,
        IClientNotificationService clientNotificationService,
-       INotificationService notificationService)
+       INotificationService notificationService,
+       ITaxCaseActivityService taxCaseActivityService)
         {
             _context = context;
             _environment = environment;
             _clientNotificationService = clientNotificationService;
             _notificationService = notificationService;
+            _taxCaseActivityService = taxCaseActivityService;
         }
 
         public async Task<DocumentDto?> UploadDocumentAsync(int taxCaseId, IFormFile file, int documentTypeId, Guid userId)
@@ -38,14 +41,17 @@ namespace JwtAuth.Services
                     return null;
                 }
 
-                // Check if the document type exists
-                bool documentTypeExists =
-                    await _context.DocumentTypes.AnyAsync(
-                        documentType => documentType.Id == documentTypeId);
+            // Check if the document type exists
+                DocumentType? documentType =
+                    await _context.DocumentTypes
+                        .Include(documentType => documentType.DocumentCategory)
+                        .FirstOrDefaultAsync(documentType =>
+                            documentType.Id == documentTypeId);
 
-                if (!documentTypeExists)
+                if (documentType is null)
                 {
-                    throw new InvalidOperationException("The selected document type does not exist.");
+                    throw new InvalidOperationException(
+                        "The selected document type does not exist.");
                 }
 
                 if (file.Length == 0)
@@ -107,34 +113,36 @@ namespace JwtAuth.Services
 
                  await _context.SaveChangesAsync();
 
-                DocumentRequest? documentRequest = await _context.DocumentRequests
+                DocumentRequest? documentRequest =
+                await _context.DocumentRequests
                     .FirstOrDefaultAsync(request =>
-                    request.TaxCaseId == taxCaseId &&
-                    request.DocumentTypeId == documentTypeId);
+                        request.TaxCaseId == taxCaseId &&
+                        request.DocumentTypeId == documentTypeId);
 
                 if (documentRequest is not null)
                 {
-                documentRequest.Status = DocumentRequestStatus.Uploaded;
+                    documentRequest.Status = DocumentRequestStatus.Uploaded;
 
-                await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync();
+
+                    await _taxCaseActivityService.CreateActivityAsync(
+                        documentRequest.TaxCaseId,
+                        userId,
+                        "DocumentUploaded",
+                        $"{documentType.Name} was uploaded.");
                 }
 
-                DocumentType? documentType = await _context.DocumentTypes
-                    .Include(documentType => documentType.DocumentCategory)
-                    .FirstOrDefaultAsync(documentType =>
-                     documentType.Id == documentTypeId);
-            
-                return new DocumentDto
+            return new DocumentDto
                 {
                     Id = document.Id,
                     FileName = document.FileName,
                     ContentType = document.ContentType,
                     FileSize = document.FileSize,
-                    UploadedAt = DateTime.UtcNow,
+                    UploadedAt = document.UploadedAt,
                     TaxCaseId = taxCaseId,
                     DocumentTypeId = document.DocumentTypeId,
-                    DocumentType = documentType?.Name,
-                    DocumentCategory = documentType?.DocumentCategory.Name
+                    DocumentType = documentType.Name,
+                    DocumentCategory = documentType.DocumentCategory.Name
                 };
             
         }
@@ -199,9 +207,12 @@ namespace JwtAuth.Services
         public async Task<bool> DeleteDocumentAsync(int documentId, Guid userId)
         {
             Document? document = await _context.Documents
-                .FirstOrDefaultAsync(document =>
-                    document.Id == documentId &&
-                    document.TaxCase.Client.UserId == userId);
+            .Include(document => document.DocumentType)
+            .FirstOrDefaultAsync(document =>
+                document.Id == documentId &&
+                document.TaxCase.Client.UserId == userId);
+
+            string documentTypeName = document.DocumentType?.Name ?? "Document";
 
             if (document is null)
             {
@@ -232,17 +243,20 @@ namespace JwtAuth.Services
             await _context.SaveChangesAsync();
 
 
-           // Check if another same type document still exist
+            // Check if another same type document still exist
+            bool returnedToPending = false;
 
             if (documentTypeId is not null)
             {
-                bool anotherDocumentExists = await _context.Documents.AnyAsync(existingDocument =>
+                bool anotherDocumentExists =
+                    await _context.Documents.AnyAsync(existingDocument =>
                         existingDocument.TaxCaseId == taxCaseId &&
                         existingDocument.DocumentTypeId == documentTypeId);
 
                 if (!anotherDocumentExists)
                 {
-                    DocumentRequest? documentRequest = await _context.DocumentRequests
+                    DocumentRequest? documentRequest =
+                        await _context.DocumentRequests
                             .FirstOrDefaultAsync(request =>
                                 request.TaxCaseId == taxCaseId &&
                                 request.DocumentTypeId == documentTypeId);
@@ -252,10 +266,19 @@ namespace JwtAuth.Services
                         documentRequest.Status = DocumentRequestStatus.Pending;
 
                         await _context.SaveChangesAsync();
+
+                        returnedToPending = true;
                     }
                 }
-
             }
+
+            await _taxCaseActivityService.CreateActivityAsync(
+                taxCaseId,
+                userId,
+                "DocumentDeleted",
+                returnedToPending
+                    ? $"{documentTypeName} was deleted and returned to Pending."
+                    : $"{documentTypeName} was deleted.");
 
             return true;
 
@@ -294,11 +317,13 @@ namespace JwtAuth.Services
                 return null;
             }
 
-            bool documentTypeExists =
-                await _context.DocumentTypes.AnyAsync(
-                    documentType => documentType.Id == documentTypeId);
+            DocumentType? documentType =
+            await _context.DocumentTypes
+                .Include(documentType => documentType.DocumentCategory)
+                .FirstOrDefaultAsync(documentType =>
+                    documentType.Id == documentTypeId);
 
-            if (!documentTypeExists)
+            if (documentType is null)
             {
                 throw new InvalidOperationException(
                     "The selected document type does not exist.");
@@ -320,11 +345,11 @@ namespace JwtAuth.Services
 
             string[] allowedExtensions =
             {
-        ".pdf",
-        ".jpg",
-        ".jpeg",
-        ".png"
-    };
+                ".pdf",
+                ".jpg",
+                ".jpeg",
+                ".png"
+            };
 
             string extension =
                 Path.GetExtension(file.FileName).ToLower();
@@ -380,16 +405,23 @@ namespace JwtAuth.Services
                 documentRequest.Status = DocumentRequestStatus.Uploaded;
 
                 await _context.SaveChangesAsync();
+
+                await _taxCaseActivityService.CreateActivityAsync(
+                    documentRequest.TaxCaseId,
+                    portalUserId,
+                    "DocumentUploaded",
+                    $"{documentType.Name} was uploaded.");
             }
 
             bool hasDocumentRequests = await _context.DocumentRequests.AnyAsync(request =>
                 request.TaxCaseId == taxCaseId);
 
-            bool hasIncompleteRequests = await _context.DocumentRequests.AnyAsync(request =>
-                    request.TaxCaseId == taxCaseId &&
-                    request.Status != DocumentRequestStatus.Completed);
+            bool hasPendingRequests =
+                 await _context.DocumentRequests.AnyAsync(request =>
+                     request.TaxCaseId == taxCaseId &&
+                     request.Status == DocumentRequestStatus.Pending);
 
-            if (hasDocumentRequests && !hasIncompleteRequests)
+            if (hasDocumentRequests && !hasPendingRequests)
             {
                 if (
                     taxCase.Client.NotificationsEnabled &&
@@ -444,15 +476,7 @@ namespace JwtAuth.Services
             }
 
 
-            DocumentType? documentType =
-                await _context.DocumentTypes
-                    .Include(documentType =>
-                        documentType.DocumentCategory)
-                    .FirstOrDefaultAsync(documentType =>
-                        documentType.Id == documentTypeId);
-
-                if (documentType is not null)
-                {
+               
                 string clientName = $"{taxCase.Client.FirstName} {taxCase.Client.LastName}";
 
                 await _notificationService.CreateNotificationAsync(
@@ -502,13 +526,7 @@ namespace JwtAuth.Services
                         smsMessage
                     );
                 }
-                /*await _emailService.SendAdminDocumentUploadedAsync(
-                   taxCase.Client.User.Email,
-                   $"{taxCase.Client.FirstName} {taxCase.Client.LastName}",
-                   taxCase.TaxYear,
-                   documentType.Name,
-                   document.FileName);*/
-            }
+     
             return new DocumentDto
             {
                 Id = document.Id,
@@ -519,8 +537,7 @@ namespace JwtAuth.Services
                 TaxCaseId = document.TaxCaseId,
                 DocumentTypeId = document.DocumentTypeId,
                 DocumentType = documentType?.Name,
-                DocumentCategory =
-                    documentType?.DocumentCategory.Name
+                DocumentCategory = documentType?.DocumentCategory.Name
             };
 
 
@@ -595,12 +612,18 @@ namespace JwtAuth.Services
         public async Task<bool> DeletePortalDocumentAsync(int documentId, Guid portalUserId)
         {
             Document? document = await _context.Documents
+                .Include(document => document.DocumentType)
                 .Include(document => document.TaxCase)
                     .ThenInclude(taxCase => taxCase.Client)
                 .FirstOrDefaultAsync(document =>
                     document.Id == documentId &&
                     document.TaxCase.Client.PortalUserId == portalUserId &&
                     document.UploadedByUserId == portalUserId);
+
+            string documentTypeName =
+                document.DocumentType?.Name ?? "Document";
+
+            bool returnedToPending = false;
 
             if (document is null)
             {
@@ -657,6 +680,14 @@ namespace JwtAuth.Services
                     }
                 }
             }
+
+            await _taxCaseActivityService.CreateActivityAsync(
+                taxCaseId,
+                portalUserId,
+                "DocumentDeleted",
+                returnedToPending
+                    ? $"{documentTypeName} was deleted and returned to Pending."
+                    : $"{documentTypeName} was deleted.");
 
             return true;
         }

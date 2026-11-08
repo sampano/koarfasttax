@@ -14,6 +14,7 @@ namespace JwtAuth.Services
 
         private readonly INotificationService _notificationService;
 
+        private readonly ITaxCaseActivityService _taxCaseActivityService;
         private static string FormatTaxCaseStatus(TaxCaseStatus status)
         {
             return status switch
@@ -24,6 +25,7 @@ namespace JwtAuth.Services
                 _ => status.ToString()
             };
         }
+
 
         public static readonly Expression<Func<TaxCase, TaxCaseDto>> TaxCaseToDto = taxCase => new TaxCaseDto
     {
@@ -61,11 +63,13 @@ namespace JwtAuth.Services
         public TaxCaseService(
        AppDbContext context,
        IClientNotificationService clientNotificationService,
-       INotificationService notificationService)
+       INotificationService notificationService,
+       ITaxCaseActivityService taxCaseActivityService)
         {
             _context = context;
             _clientNotificationService = clientNotificationService;
             _notificationService = notificationService;
+            _taxCaseActivityService = taxCaseActivityService;
         }
         public async Task<List<TaxCaseDto>> GetTaxCaseByClientAsync(int clientId, Guid userId)
         {
@@ -179,34 +183,42 @@ namespace JwtAuth.Services
 
             if (oldStatus != taxCase.Status)
             {
+                string oldFormattedStatus = FormatTaxCaseStatus(oldStatus);
                 string formattedStatus = FormatTaxCaseStatus(taxCase.Status);
+
+                await _taxCaseActivityService.CreateActivityAsync(
+                    taxCase.Id,
+                    userId,
+                    "StatusChanged",
+                    $"Tax case status changed from {oldFormattedStatus} to {formattedStatus}.");
 
                 if (
                     taxCase.Client.NotificationsEnabled &&
-                    !string.IsNullOrWhiteSpace(taxCase.Client.GoHighLevelContactId)
+                    !string.IsNullOrWhiteSpace(
+                        taxCase.Client.GoHighLevelContactId
                     )
-
+                )
                 {
-                            string subject =
-                $"Your {taxCase.TaxYear} Tax Case Status Has Been Updated";
+                    string subject =
+                        $"Your {taxCase.TaxYear} Tax Case Status Has Been Updated";
 
-                                string html = $"""
-                <h2>Your tax case status has been updated</h2>
+                    string html = $"""
+                    <h2>Your tax case status has been updated</h2>
 
-                <p>
-                    The status of your {taxCase.TaxYear}
-                    Koar Fast Tax tax case has changed.
-                </p>
+                    <p>
+                        The status of your {taxCase.TaxYear}
+                        Koar Fast Tax tax case has changed.
+                    </p>
 
-                <p>
-                    <strong>Current Status:</strong> {formattedStatus}
-                </p>
+                    <p>
+                        <strong>Current Status:</strong> {formattedStatus}
+                    </p>
 
-                <p>
-                    Please log in to your Koar Fast Tax client portal
-                    to review your case.
-                </p>
-                """;
+                    <p>
+                        Please log in to your Koar Fast Tax client portal
+                        to review your case.
+                    </p>
+                    """;
 
                     string smsMessage =
                         $"Koar Fast Tax: Your {taxCase.TaxYear} tax case status is now {formattedStatus}.";
@@ -218,18 +230,17 @@ namespace JwtAuth.Services
                         html,
                         smsMessage
                     );
-      
                 }
+
                 if (taxCase.Client.PortalUserId is not null)
                 {
                     await _notificationService.CreateNotificationAsync(
                         taxCase.Client.PortalUserId.Value,
                         "Tax case status updated",
-                        $"Your {taxCase.TaxYear} tax case is now {formattedStatus}.",
+                        $"Your {taxCase.TaxYear} tax case status is now {formattedStatus}.",
                         $"/client/tax-cases/{taxCase.Id}"
                     );
                 }
-
             }
 
             return new TaxCaseDto

@@ -14,6 +14,8 @@ namespace JwtAuth.Data
         // create taxcases table represent taxcase class
         public DbSet<TaxCase> TaxCases { get; set; }
 
+        public DbSet<TaxCaseActivity> TaxCaseActivities { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -35,6 +37,18 @@ namespace JwtAuth.Data
             modelBuilder.Entity<TaxCase>()
                 .Property(taxCase => taxCase.Status)
                 .HasConversion<string>();
+
+            modelBuilder.Entity<TaxCaseActivity>()
+                .HasOne(activity => activity.TaxCase)
+                .WithMany(taxCase => taxCase.Activities)
+                .HasForeignKey(activity => activity.TaxCaseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TaxCaseActivity>()
+                .HasOne(activity => activity.User)
+                .WithMany()
+                .HasForeignKey(activity => activity.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<Document>()
                 .HasOne(document => document.UploadedByUser)

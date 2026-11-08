@@ -1,5 +1,6 @@
 import { apiFetch } from "./apiClient";
 import type { TaxCase, TaxCaseSummary } from "../types/taxCase";
+import type { TaxCaseActivity } from "../types/taxCaseActivity";
 
 export async function getTaxCasesByClient(
   clientId: number | string,
@@ -107,4 +108,16 @@ export async function deleteTaxCase(taxCaseId: number | string): Promise<void> {
   if (!response.ok) {
     throw new Error("Failed to delete tax case.");
   }
+}
+
+export async function getTaxCaseActivity(
+  taxCaseId: number | string,
+): Promise<TaxCaseActivity[]> {
+  const response = await apiFetch(`/TaxCases/${taxCaseId}/activity`);
+
+  if (!response.ok) {
+    throw new Error("Failed to load tax case activity.");
+  }
+
+  return response.json();
 }

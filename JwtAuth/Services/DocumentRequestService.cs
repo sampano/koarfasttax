@@ -10,12 +10,14 @@ namespace JwtAuth.Services
         private readonly AppDbContext _context;
         private readonly IClientNotificationService _clientNotificationService;
         private readonly INotificationService _notificationService;
+        private readonly ITaxCaseActivityService _taxCaseActivityService;
 
-        public DocumentRequestService(AppDbContext context, IClientNotificationService clientNotificationService, INotificationService notificationService)
+        public DocumentRequestService(AppDbContext context, IClientNotificationService clientNotificationService, INotificationService notificationService, ITaxCaseActivityService taxCaseActivityService)
         {
             _context = context;
             _clientNotificationService = clientNotificationService;
             _notificationService = notificationService;
+            _taxCaseActivityService = taxCaseActivityService;
         }
         public async Task<DocumentRequestDto?> CreateDocumentRequestAsync(
             int taxCaseId,
@@ -69,6 +71,12 @@ namespace JwtAuth.Services
             _context.DocumentRequests.Add(documentRequest);
 
             await _context.SaveChangesAsync();
+
+            await _taxCaseActivityService.CreateActivityAsync(
+                taxCase.Id,
+                userId,
+                "DocumentRequested",
+                $"{documentType.Name} was requested.");
 
             if (
                  taxCase.Client.NotificationsEnabled &&
@@ -237,6 +245,12 @@ namespace JwtAuth.Services
 
             await _context.SaveChangesAsync();
 
+            await _taxCaseActivityService.CreateActivityAsync(
+                documentRequest.TaxCaseId,
+                userId,
+                "DocumentCompleted",
+                $"{documentRequest.DocumentType.Name} was marked as completed.");
+
             return new DocumentRequestDto
             {
                 Id = documentRequest.Id,
@@ -250,6 +264,6 @@ namespace JwtAuth.Services
                 CreatedAt = documentRequest.CreatedAt
             };
         }
-
+        
     }
 }

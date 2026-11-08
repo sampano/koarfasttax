@@ -9,6 +9,7 @@ import {
   getTaxCaseSummary,
   updateTaxCase,
   deleteTaxCase,
+  getTaxCaseActivity,
 } from "../api/taxCases";
 import {
   getDocumentCategories,
@@ -25,6 +26,7 @@ import {
 } from "../api/documentRequests";
 import ConfirmModal from "../components/ConfirmModal";
 import Toast from "../components/Toast";
+import type { TaxCaseActivity } from "../types/taxCaseActivity";
 
 /*function formatStatus(status: string) {
   return status.replace(/([a-z])([A-Z])/g, "$1 $2");
@@ -119,6 +121,9 @@ function TaxCaseDetailsPage() {
   const [taxCaseEditError, setTaxCaseEditError] = useState("");
   const [savingTaxCase, setSavingTaxCase] = useState(false);
 
+  // State for tax case activities
+  const [activities, setActivities] = useState<TaxCaseActivity[]>([]);
+
   async function loadDocumentCategories() {
     try {
       const data = await getDocumentCategories();
@@ -152,6 +157,7 @@ function TaxCaseDetailsPage() {
     loadTaxCase();
     loadDocumentCategories();
     loadDocumentRequests();
+    loadActivities();
   }, [id]);
 
   // Function for uploading documents
@@ -169,7 +175,11 @@ function TaxCaseDetailsPage() {
     try {
       await uploadTaxDocument(taxCase.id, selectedFile, selectedDocumentTypeId);
 
-      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
+      await Promise.all([
+        loadTaxCase(),
+        loadDocumentRequests(),
+        loadActivities(),
+      ]);
 
       setSelectedDocumentTypeId("");
       setSelectedFile(null);
@@ -224,7 +234,11 @@ function TaxCaseDetailsPage() {
     try {
       await deleteTaxDocument(documentToDelete);
 
-      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
+      await Promise.all([
+        loadTaxCase(),
+        loadDocumentRequests(),
+        loadActivities(),
+      ]);
 
       setDocumentToDelete(null);
 
@@ -265,7 +279,11 @@ function TaxCaseDetailsPage() {
       setRequestDocumentTypeId("");
       setRequestNote("");
 
-      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
+      await Promise.all([
+        loadTaxCase(),
+        loadDocumentRequests(),
+        loadActivities(),
+      ]);
     } catch (error) {
       console.error(error);
 
@@ -288,7 +306,11 @@ function TaxCaseDetailsPage() {
       setEditingRequestId(null);
       setEditingNote("");
 
-      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
+      await Promise.all([
+        loadTaxCase(),
+        loadDocumentRequests(),
+        loadActivities(),
+      ]);
     } catch (error) {
       console.error(error);
       setRequestActionError("Unable to update note.");
@@ -306,7 +328,11 @@ function TaxCaseDetailsPage() {
     try {
       await deleteDocumentRequest(documentRequestToDelete);
 
-      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
+      await Promise.all([
+        loadTaxCase(),
+        loadDocumentRequests(),
+        loadActivities(),
+      ]);
 
       setDocumentRequestToDelete(null);
 
@@ -353,7 +379,11 @@ function TaxCaseDetailsPage() {
 
       setEditingTaxCase(false);
 
-      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
+      await Promise.all([
+        loadTaxCase(),
+        loadDocumentRequests(),
+        loadActivities(),
+      ]);
     } catch (error) {
       console.error(error);
 
@@ -393,7 +423,11 @@ function TaxCaseDetailsPage() {
     try {
       await completeDocumentRequest(documentRequestId);
 
-      await Promise.all([loadTaxCase(), loadDocumentRequests()]);
+      await Promise.all([
+        loadTaxCase(),
+        loadDocumentRequests(),
+        loadActivities(),
+      ]);
 
       showToast("Document request marked as completed.", "success");
     } catch (error) {
@@ -433,6 +467,20 @@ function TaxCaseDetailsPage() {
       );
     } finally {
       setDeletingTaxCase(false);
+    }
+  }
+
+  async function loadActivities() {
+    if (!id) {
+      return;
+    }
+
+    try {
+      const data = await getTaxCaseActivity(id);
+
+      setActivities(data);
+    } catch (error) {
+      console.error(error);
     }
   }
 
@@ -979,6 +1027,50 @@ function TaxCaseDetailsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+        <div className="mt-8">
+          <h2 className="mb-4 text-2xl font-bold text-gray-900">
+            Activity History
+          </h2>
+
+          {activities.length === 0 ? (
+            <div className="rounded-xl bg-white p-6 shadow">
+              <p className="text-gray-500">
+                No activity recorded for this tax case yet.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-white p-6 shadow">
+              <div className="space-y-6">
+                {activities.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="border-l-2 border-gray-200 pl-5"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-gray-900">
+                        {activity.action}
+                      </p>
+
+                      <span className="text-sm text-gray-400">
+                        {new Date(activity.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+
+                    {activity.description && (
+                      <p className="mt-1 text-sm text-gray-700">
+                        {activity.description}
+                      </p>
+                    )}
+
+                    <p className="mt-1 text-xs text-gray-500">
+                      By {activity.userName}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

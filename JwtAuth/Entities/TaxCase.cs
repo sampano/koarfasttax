@@ -19,5 +19,7 @@ namespace JwtAuth.Entities
         public List<Document> Documents { get; set; } = [];
 
         public List<DocumentRequest> DocumentRequests { get; set; } = [];
+
+        public List<TaxCaseActivity> Activities { get; set; } = [];
     }
 }

@@ -1,7 +1,6 @@
 ﻿using JwtAuth.Dtos.TaxCases;
 using JwtAuth.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -14,9 +13,12 @@ namespace JwtAuth.Controllers
     {
         private readonly ITaxCaseService _taxCaseService;
 
-        public TaxCasesController(ITaxCaseService taxCaseService)
+        private readonly ITaxCaseActivityService _taxCaseActivityService;
+
+        public TaxCasesController(ITaxCaseService taxCaseService, ITaxCaseActivityService taxCaseActivityService)
         {
             _taxCaseService = taxCaseService;
+            _taxCaseActivityService = taxCaseActivityService;
         }
         
         private Guid GetCurrentUserId()
@@ -154,6 +156,20 @@ namespace JwtAuth.Controllers
             }
 
             return Ok(summary);
+        }
+
+        [HttpGet("{taxCaseId}/activity")]
+        public async Task<ActionResult<List<TaxCaseActivityDto>>> GetActivity(
+    int taxCaseId)
+        {
+            Guid userId = GetCurrentUserId();
+
+            List<TaxCaseActivityDto> activities =
+                await _taxCaseActivityService.GetActivitiesAsync(
+                    taxCaseId,
+                    userId);
+
+            return Ok(activities);
         }
     }
 }
